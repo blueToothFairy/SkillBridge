@@ -1,0 +1,22 @@
+import express, { Application, Request, Response } from 'express';
+import cors from 'cors';
+import { corsOptions } from './config/cors';
+import healthRoutes from './modules/health/health.routes';
+import { sendError } from './utils/response';
+
+const app: Application = express();
+
+// Middlewares
+app.use(cors(corsOptions));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use('/health', healthRoutes);
+
+// Fallback 404 Route
+app.use((_req: Request, res: Response) => {
+  sendError(res, 'Route not found', 404, 'NOT_FOUND');
+});
+
+export default app;
