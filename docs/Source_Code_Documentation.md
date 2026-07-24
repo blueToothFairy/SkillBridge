@@ -95,7 +95,7 @@ backend/src/
 ├── config/                 # database.ts, env.ts, cors.ts
 ├── modules/                # Feature modules (domain-driven)
 │   ├── auth/               # auth.controller.ts, auth.service.ts, auth.routes.ts,
-│   │                       # auth.validation.ts, auth.types.ts
+│   │                       # auth.types.ts
 │   ├── user/               # (same pattern)
 │   ├── project/
 │   ├── application/
@@ -104,8 +104,8 @@ backend/src/
 │   ├── escrow/
 │   ├── portfolio/
 │   └── certificate/
-├── middleware/             # auth, role, validation, rateLimiter, error
-├── utils/                  # logger.ts, response.ts, errors.ts, pagination.ts
+├── middleware/             # auth, role, rateLimiter
+├── utils/                  # logger.ts, response.ts, pagination.ts
 ├── prisma/                 # schema.prisma, seed.ts, migrations/
 ├── app.ts                  # Express app setup
 └── server.ts               # Entry point
@@ -136,7 +136,7 @@ backend/src/
 | **Variables**             | camelCase           | `projectList`, `isLoading`                   |
 | **Constants**             | UPPER_SNAKE_CASE    | `MAX_TEAM_SIZE`, `JWT_EXPIRES_IN`            |
 | **Functions**             | camelCase (verb-first) | `getProjectById()`, `validateInput()`     |
-| **Classes**               | PascalCase          | `ProjectService`, `AppError`                 |
+| **Classes**               | PascalCase          | `ProjectService`, `NotificationService`      |
 | **Interfaces/Types**      | PascalCase          | `CreateProjectDTO`, `ApiResponse<T>`         |
 | **Enums**                 | PascalCase          | `ProjectStatus`                              |
 | **Enum Members**          | UPPER_SNAKE_CASE    | `ProjectStatus.IN_PROGRESS`                  |
@@ -228,7 +228,6 @@ Each backend module follows this structure:
 | `*.routes.ts`        | Express routes, attach middleware and controller        |
 | `*.controller.ts`    | Parse request, call service, format response            |
 | `*.service.ts`       | Business logic, database access via Prisma              |
-| `*.validation.ts`    | Zod schemas for request validation                      |
 | `*.types.ts`         | TypeScript interfaces for the module                    |
 
 ### 6.2 Critical Layer Rules
@@ -237,9 +236,7 @@ Each backend module follows this structure:
 > These rules ensure testability and maintainability:
 > - **Controllers** MUST NOT contain business logic or access the database
 > - **Controllers** MUST delegate all logic to the service layer
-> - **Controllers** MUST use `next(error)` for error propagation
 > - **Services** MUST NOT access `req` or `res` objects
-> - **Services** throw custom `AppError` subclasses for error conditions
 
 ---
 
@@ -249,7 +246,7 @@ Each backend module follows this structure:
 
 | Principle | Application                                                                |
 | :-------- | :------------------------------------------------------------------------- |
-| **SRP**   | Controller / Service / Validation separation in every module                |
+| **SRP**   | Controller / Service separation in every module                |
 | **OCP**   | Strategy pattern for matching (MVP: skill-tag → V1.1: rule-based → V2.0: AI) |
 | **LSP**   | Escrow providers are interchangeable (Simulated → VNPay)                    |
 | **ISP**   | Small interfaces: `ProjectReader`, `ProjectWriter`, `ProjectStatusManager`  |
@@ -297,7 +294,7 @@ export class MatchingService {
 
 | Test Type          | Scope                            | Tool             | Target         |
 | :----------------- | :------------------------------- | :--------------- | :------------- |
-| **Unit Tests**     | Services, utilities, validation  | Jest             | ≥ 60% (core)   |
+| **Unit Tests**     | Services, utilities              | Jest             | ≥ 60% (core)   |
 | **Integration**    | API endpoints (route → DB)       | Jest + Supertest | Key flows      |
 | **E2E**            | Critical user flows              | Playwright       | Deferred to V1.1|
 

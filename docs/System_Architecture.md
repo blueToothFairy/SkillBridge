@@ -182,7 +182,7 @@ Each backend module follows a strict **3-layer pattern**:
 ```mermaid
 graph TB
     Request["HTTP Request"] --> Router["Router"]
-    Router --> Middleware["Middleware<br>(Auth, Validation)"]
+    Router --> Middleware["Middleware<br>(Auth)"]
     Middleware --> Controller["Controller"]
     Controller --> Service["Service"]
     Service --> DAL["Prisma ORM"]
@@ -209,34 +209,6 @@ graph TB
 | 4     | Rate Limiter      | 100 req/min per IP                               |
 | 5     | Auth Middleware    | Verify JWT, attach user                          |
 | 6     | Role Middleware    | Check role permissions                           |
-| 7     | Validation        | Validate body/params via Zod schemas             |
-| 8     | Error Handler     | Catch and format all errors consistently         |
-
-### 6.3 Error Handling Architecture
-
-All errors flow through a centralized error handler. Custom error classes map to HTTP status codes:
-
-| Error Class        | HTTP | Code                 | Usage                       |
-| :----------------- | :--: | :------------------- | :-------------------------- |
-| `BadRequestError`  | 400  | `BAD_REQUEST`        | Invalid input               |
-| `UnauthorizedError`| 401  | `UNAUTHORIZED`       | Missing/invalid auth        |
-| `ForbiddenError`   | 403  | `FORBIDDEN`          | Insufficient permissions    |
-| `NotFoundError`    | 404  | `NOT_FOUND`          | Resource doesn't exist      |
-| `ConflictError`    | 409  | `CONFLICT`           | Duplicate resource          |
-| `ValidationError`  | 422  | `VALIDATION_ERROR`   | Schema validation failure   |
-
-**Response envelope:**
-
-```typescript
-// Success
-{ success: true, data: T, meta?: { total, page, limit, totalPages } }
-
-// Error
-{ success: false, error: { code: string, message: string, details?: unknown } }
-```
-
-> [!NOTE]
-> For implementation patterns (controller/service/route code examples), see [Coding Standards §6](./Source_Code_Documentation.md#6-backend-nodejs--express-conventions).
 
 ---
 
