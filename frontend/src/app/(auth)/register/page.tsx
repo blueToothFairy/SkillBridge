@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { UserRole, RegisterPayload } from '@/types';
+import { UserRole, RegisterPayload, Tag } from '@/types';
+import { fetchTagsApi } from '@/lib/api/tags';
 import {
   UserPlus,
   ArrowRight,
@@ -31,7 +32,8 @@ export default function RegisterPage() {
   const [university, setUniversity] = useState('');
   const [major, setMajor] = useState('');
   const [year, setYear] = useState<number>(3);
-  const [skillsInput, setSkillsInput] = useState('React, TypeScript, Node.js');
+  const [availableSkills, setAvailableSkills] = useState<Tag[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(['React', 'TypeScript', 'Node.js']);
 
   // Step 2 State - SME Profile
   const [companyName, setCompanyName] = useState('');
@@ -41,6 +43,50 @@ export default function RegisterPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    async function loadSkills() {
+      try {
+        const tags = await fetchTagsApi('SKILL');
+        if (tags && tags.length > 0) {
+          setAvailableSkills(tags);
+        } else {
+          // fallback seed tags
+          setAvailableSkills([
+            { id: '1', name: 'React', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '2', name: 'Node.js', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '3', name: 'TypeScript', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '4', name: 'Python', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '5', name: 'Figma', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '6', name: 'Flutter', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '7', name: 'PostgreSQL', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '8', name: 'Tailwind CSS', type: 'SKILL', isActive: true, createdAt: '' },
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch skill tags:', err);
+        setAvailableSkills([
+          { id: '1', name: 'React', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '2', name: 'Node.js', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '3', name: 'TypeScript', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '4', name: 'Python', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '5', name: 'Figma', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '6', name: 'Flutter', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '7', name: 'PostgreSQL', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '8', name: 'Tailwind CSS', type: 'SKILL', isActive: true, createdAt: '' },
+        ]);
+      }
+    }
+    loadSkills();
+  }, []);
+
+  const handleToggleSkill = (skillName: string) => {
+    setSelectedSkills((prev) =>
+      prev.includes(skillName)
+        ? prev.filter((s) => s !== skillName)
+        : [...prev, skillName]
+    );
+  };
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,10 +117,10 @@ export default function RegisterPage() {
         setError('Please complete all required student profile fields.');
         return;
       }
-      const parsedSkills = skillsInput
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+      if (selectedSkills.length === 0) {
+        setError('Please select at least one skill.');
+        return;
+      }
 
       payload = {
         account: { email, password, role },
@@ -84,9 +130,9 @@ export default function RegisterPage() {
           major,
           year,
           skills: {
-            expert: parsedSkills.slice(0, 2),
-            proficient: parsedSkills.slice(2, 4),
-            familiar: parsedSkills.slice(4),
+            expert: selectedSkills.slice(0, 2),
+            proficient: selectedSkills.slice(2, 4),
+            familiar: selectedSkills.slice(4),
           },
         },
       };
@@ -123,11 +169,11 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full flex items-center justify-center my-auto py-4">
-      <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8">
+      <div className="w-full max-w-3xl card-crisp p-6 sm:p-8">
         {/* Header & Step Indicator */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 shrink-0">
+            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-brand-primary shrink-0">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
@@ -137,11 +183,11 @@ export default function RegisterPage() {
           </div>
 
           <div className="flex items-center gap-2 text-xs font-bold shrink-0">
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${step === 1 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md ${step === 1 ? 'bg-brand-primary text-white' : 'bg-slate-100 text-slate-500'}`}>
               <span>1</span> Account
             </div>
             <div className="w-4 h-0.5 bg-slate-200" />
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${step === 2 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md ${step === 2 ? 'bg-brand-primary text-white' : 'bg-slate-100 text-slate-500'}`}>
               <span>2</span> Profile
             </div>
           </div>
@@ -167,17 +213,17 @@ export default function RegisterPage() {
                   onClick={() => setRole('STUDENT')}
                   className={`p-3 rounded-lg border text-left flex items-start gap-3 transition-all ${
                     role === 'STUDENT'
-                      ? 'border-blue-600 bg-blue-50/50 text-blue-900 ring-2 ring-blue-500/20'
+                      ? 'border-brand-primary bg-blue-50/30 text-slate-900 ring-2 ring-brand-primary/20'
                       : 'border-slate-200 hover:border-slate-300 text-slate-700'
                   }`}
                 >
-                  <div className="p-2 bg-blue-100 text-blue-600 rounded-md shrink-0">
+                  <div className="p-2 bg-blue-50 text-brand-primary rounded-md shrink-0">
                     <GraduationCap className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-xs sm:text-sm">University Student</span>
-                      {role === 'STUDENT' && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                      {role === 'STUDENT' && <CheckCircle2 className="w-4 h-4 text-brand-primary shrink-0" />}
                     </div>
                     <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Apply to short-term projects & gain verified portfolio entries.</p>
                   </div>
@@ -188,17 +234,17 @@ export default function RegisterPage() {
                   onClick={() => setRole('SME')}
                   className={`p-3 rounded-lg border text-left flex items-start gap-3 transition-all ${
                     role === 'SME'
-                      ? 'border-blue-600 bg-blue-50/50 text-blue-900 ring-2 ring-blue-500/20'
+                      ? 'border-brand-primary bg-blue-50/30 text-slate-900 ring-2 ring-brand-primary/20'
                       : 'border-slate-200 hover:border-slate-300 text-slate-700'
                   }`}
                 >
-                  <div className="p-2 bg-indigo-100 text-indigo-600 rounded-md shrink-0">
+                  <div className="p-2 bg-blue-50 text-brand-primary rounded-md shrink-0">
                     <Building2 className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-xs sm:text-sm">SME Enterprise</span>
-                      {role === 'SME' && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                      {role === 'SME' && <CheckCircle2 className="w-4 h-4 text-brand-primary shrink-0" />}
                     </div>
                     <p className="text-[11px] text-slate-500 leading-tight mt-0.5">Post projects & hire verified student talent for 1-4 weeks.</p>
                   </div>
@@ -218,7 +264,7 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={role === 'STUDENT' ? 'student@university.edu.vn' : 'contact@company.com'}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                 />
               </div>
 
@@ -232,7 +278,7 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min 6 characters"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                 />
               </div>
 
@@ -246,7 +292,7 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter password"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                 />
               </div>
             </div>
@@ -254,7 +300,7 @@ export default function RegisterPage() {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 btn-primary text-xs sm:text-sm flex items-center justify-center gap-2"
               >
                 Continue
                 <ArrowRight className="w-4 h-4" />
@@ -277,7 +323,7 @@ export default function RegisterPage() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Nguyen Van A"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                     />
                   </div>
 
@@ -291,12 +337,12 @@ export default function RegisterPage() {
                       value={university}
                       onChange={(e) => setUniversity(e.target.value)}
                       placeholder="HCMUT / VNU"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                       Major *
@@ -307,7 +353,7 @@ export default function RegisterPage() {
                       value={major}
                       onChange={(e) => setMajor(e.target.value)}
                       placeholder="Computer Science"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                     />
                   </div>
 
@@ -318,7 +364,7 @@ export default function RegisterPage() {
                     <select
                       value={year}
                       onChange={(e) => setYear(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none bg-white"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none bg-white"
                     >
                       <option value={1}>Year 1 (Freshman)</option>
                       <option value={2}>Year 2 (Sophomore)</option>
@@ -327,18 +373,30 @@ export default function RegisterPage() {
                       <option value={5}>Year 5+</option>
                     </select>
                   </div>
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                      Skills (Comma-separated)
-                    </label>
-                    <input
-                      type="text"
-                      value={skillsInput}
-                      onChange={(e) => setSkillsInput(e.target.value)}
-                      placeholder="React, TypeScript, Node.js"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
-                    />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                    Skills (Choose from system tags) *
+                  </label>
+                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-3 border border-slate-200 rounded-lg bg-slate-50/50">
+                    {availableSkills.map((skill) => {
+                      const isSelected = selectedSkills.includes(skill.name);
+                      return (
+                        <button
+                          key={skill.id || skill.name}
+                          type="button"
+                          onClick={() => handleToggleSkill(skill.name)}
+                          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                            isSelected
+                              ? 'bg-blue-50 border-brand-primary text-brand-primary shadow-sm'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                          }`}
+                        >
+                          {skill.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </>
@@ -355,7 +413,7 @@ export default function RegisterPage() {
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       placeholder="Artisan Coffee Co."
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                     />
                   </div>
 
@@ -368,7 +426,7 @@ export default function RegisterPage() {
                       value={taxCode}
                       onChange={(e) => setTaxCode(e.target.value)}
                       placeholder="0312345678"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                     />
                   </div>
                 </div>
@@ -383,7 +441,7 @@ export default function RegisterPage() {
                       value={industry}
                       onChange={(e) => setIndustry(e.target.value)}
                       placeholder="Food & Beverage / E-Commerce"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                     />
                   </div>
                   <div>
@@ -395,7 +453,7 @@ export default function RegisterPage() {
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
                       placeholder="https://company.com"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs outline-none"
                     />
                   </div>
                 </div>
@@ -406,7 +464,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="w-1/3 py-2.5 border border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm rounded-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                className="w-1/3 py-2.5 btn-secondary text-xs sm:text-sm flex items-center justify-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back
@@ -415,7 +473,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-2/3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-2/3 py-2.5 btn-primary text-white text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isSubmitting ? 'Registering...' : 'Complete Registration'}
               </button>
@@ -424,9 +482,9 @@ export default function RegisterPage() {
         )}
 
         <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-          <p className="text-xs sm:text-sm text-slate-600">
+          <p className="text-xs sm:text-sm text-slate-500">
             Already have an account?{' '}
-            <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700">
+            <Link href="/login" className="font-semibold text-brand-primary hover:text-brand-primary-hover">
               Sign In
             </Link>
           </p>

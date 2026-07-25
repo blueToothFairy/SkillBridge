@@ -75,6 +75,7 @@ env/
 
 # Agent/AI Customizations & Local State
 .agent/
+.agents/
 .gemini/
 .claude/
 .codex/

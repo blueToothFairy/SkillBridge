@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { X, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { fetchTagsApi } from '@/lib/api/tags';
+import { Tag } from '@/types';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -19,14 +21,15 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   const [university, setUniversity] = useState(user?.profile?.university || '');
   const [major, setMajor] = useState(user?.profile?.major || '');
   const [year, setYear] = useState<number>(user?.profile?.year || 3);
-  const [skillsInput, setSkillsInput] = useState(
+  const [availableSkills, setAvailableSkills] = useState<Tag[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(
     user?.profile?.skills
       ? [
           ...(user.profile.skills.expert || []),
           ...(user.profile.skills.proficient || []),
           ...(user.profile.skills.familiar || []),
-        ].join(', ')
-      : 'React, TypeScript, Node.js'
+        ]
+      : ['React', 'TypeScript', 'Node.js']
   );
 
   // SME fields
@@ -39,6 +42,52 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    async function loadSkills() {
+      try {
+        const tags = await fetchTagsApi('SKILL');
+        if (tags && tags.length > 0) {
+          setAvailableSkills(tags);
+        } else {
+          // fallback seed tags
+          setAvailableSkills([
+            { id: '1', name: 'React', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '2', name: 'Node.js', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '3', name: 'TypeScript', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '4', name: 'Python', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '5', name: 'Figma', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '6', name: 'Flutter', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '7', name: 'PostgreSQL', type: 'SKILL', isActive: true, createdAt: '' },
+            { id: '8', name: 'Tailwind CSS', type: 'SKILL', isActive: true, createdAt: '' },
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch skill tags:', err);
+        setAvailableSkills([
+          { id: '1', name: 'React', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '2', name: 'Node.js', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '3', name: 'TypeScript', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '4', name: 'Python', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '5', name: 'Figma', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '6', name: 'Flutter', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '7', name: 'PostgreSQL', type: 'SKILL', isActive: true, createdAt: '' },
+          { id: '8', name: 'Tailwind CSS', type: 'SKILL', isActive: true, createdAt: '' },
+        ]);
+      }
+    }
+    if (isOpen) {
+      loadSkills();
+    }
+  }, [isOpen]);
+
+  const handleToggleSkill = (skillName: string) => {
+    setSelectedSkills((prev) =>
+      prev.includes(skillName)
+        ? prev.filter((s) => s !== skillName)
+        : [...prev, skillName]
+    );
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,10 +98,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
 
     try {
       if (isStudent) {
-        const parsedSkills = skillsInput
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
+        if (selectedSkills.length === 0) {
+          setError('Please select at least one skill.');
+          setIsSubmitting(false);
+          return;
+        }
 
         await updateProfile({
           fullName,
@@ -60,9 +110,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           major,
           year,
           skills: {
-            expert: parsedSkills.slice(0, 2),
-            proficient: parsedSkills.slice(2, 4),
-            familiar: parsedSkills.slice(4),
+            expert: selectedSkills.slice(0, 2),
+            proficient: selectedSkills.slice(2, 4),
+            familiar: selectedSkills.slice(4),
           },
         });
       } else {
@@ -126,7 +176,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
                 />
               </div>
 
@@ -140,7 +190,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     required
                     value={university}
                     onChange={(e) => setUniversity(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
                   />
                 </div>
                 <div>
@@ -152,12 +202,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     required
                     value={major}
                     onChange={(e) => setMajor(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                     Academic Year
@@ -165,7 +215,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                   <select
                     value={year}
                     onChange={(e) => setYear(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs bg-white transition-all"
                   >
                     <option value={1}>Year 1</option>
                     <option value={2}>Year 2</option>
@@ -174,17 +224,30 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     <option value={5}>Year 5+</option>
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Skills (Comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={skillsInput}
-                    onChange={(e) => setSkillsInput(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
-                  />
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                  Skills (Choose from system tags) *
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 border border-slate-200 rounded-lg bg-slate-50/50">
+                  {availableSkills.map((skill) => {
+                    const isSelected = selectedSkills.includes(skill.name);
+                    return (
+                      <button
+                        key={skill.id || skill.name}
+                        type="button"
+                        onClick={() => handleToggleSkill(skill.name)}
+                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                          isSelected
+                            ? 'bg-blue-50 border-brand-primary text-brand-primary shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        {skill.name}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -199,7 +262,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
                 />
               </div>
 
@@ -212,7 +275,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     type="text"
                     value={taxCode}
                     onChange={(e) => setTaxCode(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
                   />
                 </div>
                 <div>
@@ -223,7 +286,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     type="text"
                     value={industry}
                     onChange={(e) => setIndustry(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
                   />
                 </div>
               </div>
@@ -236,7 +299,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                   type="text"
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 text-xs outline-none"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
                 />
               </div>
             </>
@@ -247,14 +310,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors"
+              className="btn-secondary text-xs py-1.5 px-4"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              className="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               {isSubmitting ? 'Saving...' : 'Save Changes'}

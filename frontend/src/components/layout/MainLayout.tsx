@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { Navbar } from './Navbar';
 import { StudentSidebar } from './StudentSidebar';
 import { SMESidebar } from './SMESidebar';
+import { AdminSidebar } from './AdminSidebar';
 
 export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { role } = useApp();
@@ -17,7 +18,15 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Navbar />
       <div className="flex-1 flex overflow-hidden">
-        {!isAuthPage && (role === 'STUDENT' ? <StudentSidebar /> : <SMESidebar />)}
+        {!isAuthPage && (
+          role === 'STUDENT' ? (
+            <StudentSidebar />
+          ) : role === 'ADMIN' ? (
+            <AdminSidebar />
+          ) : (
+            <SMESidebar />
+          )
+        )}
         <main className={`flex-1 overflow-y-auto w-full ${isAuthPage ? 'p-4 flex items-center justify-center' : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'}`}>
           {children}
         </main>

@@ -162,53 +162,28 @@ export default function StudentProfilePage() {
               </button>
             </div>
 
-            {/* EXPERT */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                EXPERT
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {(displayProfile.skills.expert || []).map((s: string) => (
+            {(!displayProfile.skills.expert?.length &&
+              !displayProfile.skills.proficient?.length &&
+              !displayProfile.skills.familiar?.length) ? (
+              <p className="text-xs text-slate-400 italic">Chưa chọn kỹ năng nào.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ...new Set([
+                    ...(displayProfile.skills.expert || []),
+                    ...(displayProfile.skills.proficient || []),
+                    ...(displayProfile.skills.familiar || []),
+                  ]),
+                ].map((s: string) => (
                   <span
                     key={s}
-                    className="tag-matched bg-blue-50 text-blue-700 border-blue-200 text-xs px-2.5 py-1"
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-xs font-semibold rounded-md hover:border-slate-300 transition-all shadow-sm"
                   >
-                    {s} · Expert
+                    {s}
                   </span>
                 ))}
               </div>
-            </div>
-
-            {/* PROFICIENT */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                PROFICIENT
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {(displayProfile.skills.proficient || []).map((s: string) => (
-                  <span key={s} className="tag-predefined text-xs px-2.5 py-1">
-                    {s} · Proficient
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* FAMILIAR */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                FAMILIAR
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {(displayProfile.skills.familiar || []).map((s: string) => (
-                  <span
-                    key={s}
-                    className="bg-slate-50 text-slate-500 border border-slate-200 text-xs px-2.5 py-1 rounded"
-                  >
-                    {s} · Familiar
-                  </span>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Verified Portfolio Entries Section */}

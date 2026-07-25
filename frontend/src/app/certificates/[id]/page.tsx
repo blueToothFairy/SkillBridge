@@ -27,7 +27,7 @@ export default function DigitalCertificatePage() {
           </button>
           <button
             onClick={() => alert('Certificate share link copied to clipboard!')}
-            className="btn-primary bg-blue-600 hover:bg-blue-700 text-xs py-1.5 px-3 flex items-center gap-1.5"
+            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
           >
             <Share2 className="h-3.5 w-3.5" /> Share Verification Link
           </button>
@@ -35,10 +35,10 @@ export default function DigitalCertificatePage() {
       </div>
 
       {/* Main Certificate Frame (Human-crafted editorial design) */}
-      <div className="card-crisp p-8 bg-white border-2 border-slate-300 shadow-xl space-y-8 relative overflow-hidden">
+      <div className="card-crisp p-8 bg-white border border-slate-200 shadow-lg space-y-8 relative overflow-hidden">
         {/* Top Header Badge */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-full text-xs font-bold tracking-wider uppercase">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-md text-xs font-bold tracking-wider uppercase">
             <Award className="h-4 w-4 text-emerald-400" /> SkillBridge Official Certificate
           </div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-serif pt-2">

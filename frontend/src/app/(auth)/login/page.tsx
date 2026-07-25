@@ -26,7 +26,9 @@ export default function LoginPage() {
 
     try {
       const loggedUser = await login(email, password);
-      if (loggedUser.role === 'SME') {
+      if (loggedUser.role === 'ADMIN') {
+        router.push('/admin/dashboard');
+      } else if (loggedUser.role === 'SME') {
         router.push('/sme/dashboard');
       } else {
         router.push('/student/dashboard');
@@ -40,13 +42,13 @@ export default function LoginPage() {
 
   return (
     <div className="w-full flex items-center justify-center my-auto py-6">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg border border-slate-200 p-8">
+      <div className="w-full max-w-md card-crisp p-8">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full text-blue-600 mb-3">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-lg text-brand-primary mb-3">
             <LogIn className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome Back</h1>
-          <p className="text-sm text-slate-600 mt-1">Sign in to your SkillBridge account</p>
+          <p className="text-sm text-slate-500 mt-1">Sign in to your SkillBridge account</p>
         </div>
 
         {error && (
@@ -67,7 +69,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="student@university.edu.vn"
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm outline-none transition-all"
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-sm outline-none transition-all"
             />
           </div>
 
@@ -83,14 +85,14 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm outline-none transition-all"
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-sm outline-none transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-2.5 btn-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isSubmitting ? (
               'Signing In...'
@@ -104,9 +106,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-500">
             Don't have an account?{' '}
-            <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-700">
+            <Link href="/register" className="font-semibold text-brand-primary hover:text-brand-primary-hover">
               Register
             </Link>
           </p>

@@ -178,11 +178,11 @@ export default function ProjectAcceptanceEscrowPage() {
               </div>
             </div>
 
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-md text-[11px] text-blue-900 space-y-1">
-              <p className="font-semibold flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5 text-blue-600" /> Simulated Escrow Holding
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 space-y-1">
+              <p className="font-semibold flex items-center gap-1 text-slate-800">
+                <Clock className="h-3.5 w-3.5 text-brand-primary" /> Simulated Escrow Holding
               </p>
-              <p className="text-blue-700 leading-tight">
+              <p className="text-slate-500 leading-tight">
                 Funds are held in simulated platform escrow and automatically released upon your final approval.
               </p>
             </div>
@@ -195,7 +195,7 @@ export default function ProjectAcceptanceEscrowPage() {
             </h2>
 
             {isReleased ? (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-md text-xs text-emerald-900 space-y-2 text-center">
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 space-y-2 text-center">
                 <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
                 <p className="font-bold text-sm">Escrow Released & Completed!</p>
                 <p className="text-emerald-700 text-[11px]">
@@ -229,7 +229,7 @@ export default function ProjectAcceptanceEscrowPage() {
                 </div>
 
                 {/* Day 28 Auto-Accept Warning Banner */}
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-[11px] text-amber-900 space-y-1">
+                <div className="p-3 bg-amber-50/50 border border-amber-200 rounded-lg text-[11px] text-amber-900 space-y-1">
                   <p className="font-bold flex items-center gap-1">
                     <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Day 28 Auto-Accept Rule
                   </p>
@@ -246,14 +246,14 @@ export default function ProjectAcceptanceEscrowPage() {
       {/* Completion Modal */}
       {isSuccessModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-300 max-w-md w-full p-6 shadow-xl space-y-4 text-center">
+          <div className="bg-white rounded-xl border border-slate-200 max-w-md w-full p-6 shadow-xl space-y-4 text-center">
             <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />
             <h3 className="text-xl font-bold text-slate-900">Project Approved & Escrow Released!</h3>
             <p className="text-xs text-slate-600">
               The project is now marked as <strong>COMPLETED</strong>. Simulated escrow funds of{' '}
               <strong>{(project.budgetVnd).toLocaleString()} VND</strong> have been released.
             </p>
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 text-left space-y-1">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 text-left space-y-1">
               <p className="font-semibold flex items-center gap-1 text-emerald-700">
                 <FileCheck className="h-3.5 w-3.5" /> Auto-Generated Artifacts:
               </p>
@@ -263,7 +263,7 @@ export default function ProjectAcceptanceEscrowPage() {
             <div className="flex items-center justify-center gap-3 pt-2">
               <Link
                 href="/student/profile/stu-1"
-                className="btn-primary bg-blue-600 hover:bg-blue-700 text-xs py-2 px-4"
+                className="btn-primary text-xs py-2 px-4"
               >
                 View Verified Portfolio & Certificate
               </Link>
