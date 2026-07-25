@@ -17,6 +17,8 @@ import {
   MOCK_PORTFOLIO_ENTRIES,
 } from '../lib/mockData';
 
+import { useAuth } from './AuthContext';
+
 interface AppContextType {
   role: UserRole;
   setRole: (role: UserRole) => void;
@@ -37,7 +39,15 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [role, setRole] = useState<UserRole>('STUDENT');
+  const { role: authRole, setRole: setAuthRole } = useAuth();
+  const [localRole, setLocalRole] = useState<UserRole>('STUDENT');
+
+  const role = authRole || localRole;
+  const setRole = (r: UserRole) => {
+    setLocalRole(r);
+    setAuthRole(r);
+  };
+
   const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
   const [applications, setApplications] = useState<Application[]>(MOCK_APPLICATIONS);
   const [studentProfile] = useState<StudentProfile>(MOCK_STUDENT_PROFILE);

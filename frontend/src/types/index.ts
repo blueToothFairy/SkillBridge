@@ -175,3 +175,39 @@ export interface DigitalCertificate {
   skillsVerified: PredefinedSkill[];
   verificationCode: string;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  profile?: any;
+}
+
+export interface RegisterPayload {
+  account: {
+    email: string;
+    password: string;
+    role: UserRole;
+  };
+  profile: {
+    fullName?: string;
+    university?: string;
+    major?: string;
+    year?: number;
+    skills?: {
+      expert: string[];
+      proficient: string[];
+      familiar: string[];
+    };
+    companyName?: string;
+    taxCode?: string;
+    industry?: string;
+    website?: string;
+  };
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
