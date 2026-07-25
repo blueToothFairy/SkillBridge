@@ -7,7 +7,8 @@ export type ProjectStatus =
   | 'IN_PROGRESS'
   | 'PENDING_ACCEPTANCE'
   | 'COMPLETED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'UNDER_REVIEW';
 
 export type ApplicationStatus =
   | 'APPLIED'
@@ -175,3 +176,85 @@ export interface DigitalCertificate {
   skillsVerified: PredefinedSkill[];
   verificationCode: string;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  profile?: any;
+}
+
+export interface RegisterPayload {
+  account: {
+    email: string;
+    password: string;
+    role: UserRole;
+  };
+  profile: {
+    fullName?: string;
+    university?: string;
+    major?: string;
+    year?: number;
+    skills?: {
+      expert: string[];
+      proficient: string[];
+      familiar: string[];
+    };
+    companyName?: string;
+    taxCode?: string;
+    industry?: string;
+    website?: string;
+  };
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+export type TagType = 'CATEGORY' | 'SKILL';
+
+export interface Tag {
+  id: string;
+  name: string;
+  type: TagType;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ApiProject {
+  id: string;
+  smeId: string;
+  title: string;
+  description: string;
+  categoryTagId: string;
+  categoryTag?: Tag;
+  requiredSkillTags: string[];
+  budget: number;
+  durationWeeks: number;
+  maxApplicants: number;
+  deadline: string;
+  status: ProjectStatus;
+  escrowStatus: EscrowStatus;
+  createdAt: string;
+  updatedAt: string;
+  sme?: {
+    id: string;
+    companyName: string;
+    industry?: string;
+    website?: string;
+  };
+}
+
+export interface CreateProjectPayload {
+  title: string;
+  description: string;
+  categoryTagId: string;
+  requiredSkillTags: string[];
+  budget: number;
+  durationWeeks: number;
+  maxApplicants?: number;
+  deadline?: string;
+}
+
+

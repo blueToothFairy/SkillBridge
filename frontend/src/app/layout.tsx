@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthProvider } from '@/context/AuthContext';
 import { AppProvider } from '@/context/AppContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 
@@ -17,9 +18,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 antialiased">
-        <AppProvider>
-          <MainLayout>{children}</MainLayout>
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            <MainLayout>{children}</MainLayout>
+          </AppProvider>
+        </AuthProvider>
       </body>
     </html>
   );

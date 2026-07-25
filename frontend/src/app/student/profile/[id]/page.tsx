@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { EditProfileModal } from '@/components/profile/EditProfileModal';
 import {
   MapPin,
   Star,
@@ -18,39 +20,65 @@ import {
 
 export default function StudentProfilePage() {
   const { studentProfile, portfolioEntries } = useApp();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'Overview' | 'Portfolio' | 'Completed Projects'>('Overview');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const displayProfile = {
+    fullName: user?.profile?.fullName || studentProfile.fullName,
+    university: user?.profile?.university || studentProfile.university,
+    major: user?.profile?.major || studentProfile.major,
+    year: user?.profile?.year || studentProfile.year,
+    location: studentProfile.location,
+    rating: studentProfile.rating,
+    reviewCount: studentProfile.reviewCount,
+    completedProjectsCount: studentProfile.completedProjectsCount,
+    githubUrl: studentProfile.githubUrl,
+    linkedInUrl: studentProfile.linkedInUrl,
+    bio: studentProfile.bio,
+    skills: user?.profile?.skills || studentProfile.skills,
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Top Profile Card (Photo #2 match) */}
+      {/* Top Profile Card */}
       <div className="card-crisp p-6 bg-white space-y-4">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             {/* Avatar Circle */}
             <div className="h-20 w-20 rounded-full bg-blue-100 border-2 border-blue-200 flex items-center justify-center font-bold text-blue-700 text-2xl shrink-0">
-              AC
+              {getInitials(displayProfile.fullName)}
             </div>
 
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                {studentProfile.fullName}
+                {displayProfile.fullName}
               </h1>
               <p className="text-xs font-semibold text-slate-600 mt-0.5">
-                {studentProfile.major} · {studentProfile.university} · Final Year
+                {displayProfile.major} · {displayProfile.university} · Year {displayProfile.year}
               </p>
 
               <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-2">
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                  {studentProfile.location}
+                  {displayProfile.location}
                 </span>
                 <span className="flex items-center gap-1 font-semibold text-amber-600">
                   <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  {studentProfile.rating} ({studentProfile.reviewCount} reviews)
+                  {displayProfile.rating} ({displayProfile.reviewCount} reviews)
                 </span>
                 <span className="flex items-center gap-1 font-semibold text-emerald-600">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  {studentProfile.completedProjectsCount} projects completed
+                  {displayProfile.completedProjectsCount} projects completed
                 </span>
               </div>
             </div>
@@ -59,16 +87,16 @@ export default function StudentProfilePage() {
           {/* External Links & Edit */}
           <div className="flex items-center gap-2 self-end sm:self-start">
             <a
-              href={studentProfile.githubUrl}
+              href={displayProfile.githubUrl}
               target="_blank"
               rel="noreferrer"
               className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
             >
               <Code2 className="h-3.5 w-3.5 text-slate-700" /> GitHub
             </a>
-            {studentProfile.linkedInUrl && (
+            {displayProfile.linkedInUrl && (
               <a
-                href={studentProfile.linkedInUrl}
+                href={displayProfile.linkedInUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
@@ -76,7 +104,10 @@ export default function StudentProfilePage() {
                 <Globe className="h-3.5 w-3.5 text-blue-600" /> LinkedIn
               </a>
             )}
-            <button className="btn-primary text-xs py-1.5 px-3 bg-blue-600 hover:bg-blue-700 flex items-center gap-1.5">
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="btn-primary text-xs py-1.5 px-3 bg-blue-600 hover:bg-blue-700 flex items-center gap-1.5 text-white rounded-lg shadow-sm"
+            >
               <Edit className="h-3.5 w-3.5" /> Edit Profile
             </button>
           </div>
@@ -84,7 +115,7 @@ export default function StudentProfilePage() {
 
         {/* Bio Text */}
         <p className="text-xs text-slate-600 leading-relaxed pt-2 border-t border-slate-100">
-          {studentProfile.bio}
+          {displayProfile.bio}
         </p>
 
         {/* Availability Pills */}
@@ -119,62 +150,40 @@ export default function StudentProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Skills & Verified Portfolio */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Skills Breakdown Box (Photo #2 match) */}
+          {/* Skills Breakdown Box */}
           <div className="card-crisp p-5 bg-white space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h2 className="text-base font-bold text-slate-900">Skills</h2>
-              <button className="text-xs text-blue-600 font-semibold hover:underline">
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="text-xs text-blue-600 font-semibold hover:underline"
+              >
                 Edit
               </button>
             </div>
 
-            {/* EXPERT */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                EXPERT
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {studentProfile.skills.expert.map((s) => (
+            {(!displayProfile.skills.expert?.length &&
+              !displayProfile.skills.proficient?.length &&
+              !displayProfile.skills.familiar?.length) ? (
+              <p className="text-xs text-slate-400 italic">Chưa chọn kỹ năng nào.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ...new Set([
+                    ...(displayProfile.skills.expert || []),
+                    ...(displayProfile.skills.proficient || []),
+                    ...(displayProfile.skills.familiar || []),
+                  ]),
+                ].map((s: string) => (
                   <span
                     key={s}
-                    className="tag-matched bg-blue-50 text-blue-700 border-blue-200 text-xs px-2.5 py-1"
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-xs font-semibold rounded-md hover:border-slate-300 transition-all shadow-sm"
                   >
-                    {s} · Expert
+                    {s}
                   </span>
                 ))}
               </div>
-            </div>
-
-            {/* PROFICIENT */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                PROFICIENT
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {studentProfile.skills.proficient.map((s) => (
-                  <span key={s} className="tag-predefined text-xs px-2.5 py-1">
-                    {s} · Proficient
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* FAMILIAR */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                FAMILIAR
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {studentProfile.skills.familiar.map((s) => (
-                  <span
-                    key={s}
-                    className="bg-slate-50 text-slate-500 border border-slate-200 text-xs px-2.5 py-1 rounded"
-                  >
-                    {s} · Familiar
-                  </span>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Verified Portfolio Entries Section */}
@@ -243,7 +252,7 @@ export default function StudentProfilePage() {
           </div>
         </div>
 
-        {/* Right Panel: Availability & Stats (Photo #2 match) */}
+        {/* Right Panel: Availability & Stats */}
         <div className="space-y-6">
           {/* Availability Box */}
           <div className="card-crisp p-5 bg-white space-y-3">
@@ -292,6 +301,11 @@ export default function StudentProfilePage() {
           </div>
         </div>
       </div>
+
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
     </div>
   );
 }

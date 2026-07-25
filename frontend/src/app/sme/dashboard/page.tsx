@@ -1,195 +1,207 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { fetchProjectsApi } from '@/lib/api/projects';
+import { ApiProject } from '@/types';
 import {
-  Building,
-  PlusCircle,
-  Users,
-  CheckCircle2,
-  Clock,
-  ShieldCheck,
-  ArrowRight,
+  Plus,
   FolderGit2,
+  Clock,
+  CheckCircle2,
+  ArrowUpRight,
+  Loader2,
+  Building2,
+  Filter,
 } from 'lucide-react';
 
 export default function SMEDashboard() {
-  const { projects, applications } = useApp();
+  const { user } = useAuth();
+  const [projects, setProjects] = useState<ApiProject[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const smeProjects = projects;
-  const inProgressProject = projects.find((p) => p.status === 'IN_PROGRESS');
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        setLoading(true);
+        // Fetch all projects (including DRAFT, OPEN, IN_PROGRESS, COMPLETED)
+        const res = await fetchProjectsApi({ limit: 50 });
+        setProjects(res.projects);
+      } catch (err) {
+        console.error('Failed to fetch SME dashboard projects:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProjects();
+  }, []);
+
+  const totalProjects = projects.length;
   const openProjects = projects.filter((p) => p.status === 'OPEN');
+  const inProgressProjects = projects.filter((p) => p.status === 'IN_PROGRESS');
+  const completedProjects = projects.filter((p) => p.status === 'COMPLETED');
+
+  // Format currency
+  const formatVnd = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* SME Header Banner */}
-      <div className="card-crisp p-6 bg-slate-900 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Header Banner */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="bg-slate-100 text-slate-900 text-[11px] font-bold px-2 py-0.5 rounded">
+            <span className="bg-blue-50 text-brand-primary text-[11px] font-semibold px-2 py-0.5 rounded border border-blue-100">
               SME PORTAL
             </span>
-            <span className="text-xs text-slate-400">Artisan Coffee Co. · Employer</span>
+            <span className="text-xs text-slate-500 flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5" />
+              {user?.email || 'Doanh nghiệp SME'}
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Employer Dashboard
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Bảng Quản Lý Dự Án SME
           </h1>
-          <p className="text-sm text-slate-300 mt-1 max-w-2xl">
-            Manage your project postings, review student skill-match scores, and approve milestone deliverables under simulated platform escrow.
+          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+            Quản lý các bài viết tuyển dụng, ứng viên sinh viên và theo dõi tiến độ mốc dự án thực tế.
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="shrink-0">
           <Link
             href="/sme/post-project"
-            className="btn-accent-green flex items-center gap-2 text-sm font-bold shadow-xs"
+            className="btn-primary inline-flex items-center gap-2 py-2.5 text-xs"
           >
-            <PlusCircle className="h-4 w-4" /> Post New Project
+            <Plus className="w-4 h-4" /> Đăng Dự Án Mới
           </Link>
         </div>
       </div>
 
-      {/* Metrics Row */}
+      {/* Metrics Row - Real Queryable Data */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card-crisp p-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            Posted Projects
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Tổng Bài Đăng
           </p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{smeProjects.length}</p>
-          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-            <FolderGit2 className="h-3.5 w-3.5 text-blue-600" /> 1 in progress
-          </p>
-        </div>
-
-        <div className="card-crisp p-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            Total Applications
-          </p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">
-            {applications.length + 10}
-          </p>
-          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-            <Users className="h-3.5 w-3.5 text-emerald-600" /> Skill-tag ranked
+          <p className="text-2xl font-bold text-slate-900 mt-1">{totalProjects}</p>
+          <p className="text-[12px] text-slate-500 mt-1 flex items-center gap-1">
+            <FolderGit2 className="w-3.5 h-3.5 text-brand-primary" /> Tất cả bài viết
           </p>
         </div>
 
         <div className="card-crisp p-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            Simulated Escrow Locked
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Đang Mở Tuyển
           </p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">14,400,000 VND</p>
-          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Status: LOCKED
+          <p className="text-2xl font-bold text-slate-900 mt-1">{openProjects.length}</p>
+          <p className="text-[12px] text-slate-500 mt-1 flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-amber-500" /> Nhận ứng tuyển
           </p>
         </div>
 
         <div className="card-crisp p-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            Auto-Accept Status
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Đang Thực Hiện
           </p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">28 Days</p>
-          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5 text-amber-600" /> Day 28 safety rule
+          <p className="text-2xl font-bold text-slate-900 mt-1">{inProgressProjects.length}</p>
+          <p className="text-[12px] text-slate-500 mt-1 flex items-center gap-1">
+            <FolderGit2 className="w-3.5 h-3.5 text-brand-primary" /> Đang triển khai
+          </p>
+        </div>
+
+        <div className="card-crisp p-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Đã Nghiệm Thu
+          </p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{completedProjects.length}</p>
+          <p className="text-[12px] text-slate-500 mt-1 flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Hoàn thành
           </p>
         </div>
       </div>
 
-      {/* Active Project in Progress */}
-      {inProgressProject && (
-        <div className="card-crisp p-6 border-l-4 border-l-slate-900 bg-white space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="status-pill status-in-progress">In Progress</span>
-                <span className="text-xs font-bold text-slate-500">
-                  Assigned Student: {inProgressProject.acceptedStudentName} ({inProgressProject.acceptedStudentUniversity})
-                </span>
-              </div>
-              <h2 className="text-xl font-bold text-slate-900 mt-1">{inProgressProject.title}</h2>
-              <p className="text-xs text-slate-500">
-                Budget: {(inProgressProject.budgetVnd).toLocaleString()} VND (~£480) · Duration: {inProgressProject.durationWeeks} weeks
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/workspace/${inProgressProject.id}`}
-                className="btn-secondary text-xs py-2 px-3"
-              >
-                Project Workspace
-              </Link>
-              <Link
-                href={`/escrow/${inProgressProject.id}`}
-                className="btn-primary bg-blue-600 hover:bg-blue-700 text-xs py-2 px-4"
-              >
-                Acceptance &amp; Escrow
-              </Link>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
-              Milestone Review Action Needed:
-            </p>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md flex items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 text-amber-900">
-                <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-                <span>
-                  <strong>Milestone #3 (Refined logo + brand guidelines)</strong> deliverable link submitted by Alex Chen. Awaiting your review.
-                </span>
-              </div>
-              <Link
-                href={`/workspace/${inProgressProject.id}`}
-                className="btn-primary bg-amber-600 hover:bg-amber-700 text-xs py-1.5 px-3 shrink-0"
-              >
-                Review Deliverable
-              </Link>
-            </div>
-          </div>
+      {/* Projects Table View - Operational Density */}
+      <div className="card-crisp overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            Danh Sách Dự Án Đã Đăng
+          </h2>
+          <span className="text-xs text-slate-500 font-medium">
+            {projects.length} dự án từ Database
+          </span>
         </div>
-      )}
 
-      {/* Projects Needing Applicants Review */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <Users className="h-5 w-5 text-blue-600" /> Open Projects &amp; Applicants
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {openProjects.map((proj) => (
-            <div key={proj.id} className="card-crisp p-5 bg-white flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase">{proj.category}</span>
-                  <span className="status-pill status-open">Open</span>
-                </div>
-                <h3 className="font-bold text-slate-900 text-base mt-1">{proj.title}</h3>
-                <p className="text-xs text-slate-600 line-clamp-2 mt-1">{proj.description}</p>
-
-                <div className="flex flex-wrap gap-1 mt-3">
-                  {proj.requiredSkills.map((s) => (
-                    <span key={s} className="tag-predefined text-[11px]">
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <div>
-                  <p className="font-bold text-slate-900">{proj.applicantCount} Applicants</p>
-                  <p className="text-[11px] text-slate-500">Skill-tag overlap ranked</p>
-                </div>
-                <Link
-                  href={`/sme/matching/${proj.id}`}
-                  className="btn-primary bg-blue-600 hover:bg-blue-700 text-xs py-1.5 px-3 flex items-center gap-1"
-                >
-                  Review Applicants <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="p-12 text-center text-slate-400 flex items-center justify-center gap-2 text-xs">
+            <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />
+            Đang tải dữ liệu dự án từ cơ sở dữ liệu...
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="p-12 text-center text-slate-500 text-xs">
+            Chưa có dự án nào được đăng. Hãy nhấn &quot;Đăng Dự Án Mới&quot; để tạo bài viết đầu tiên.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                  <th className="py-3 px-4">Tên Dự Án</th>
+                  <th className="py-3 px-4">Danh Mục</th>
+                  <th className="py-3 px-4">Ngân Sách</th>
+                  <th className="py-3 px-4">Thời Gian</th>
+                  <th className="py-3 px-4">Trạng Thái</th>
+                  <th className="py-3 px-4 text-right">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-800">
+                {projects.map((proj) => (
+                  <tr key={proj.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 font-semibold text-slate-900 max-w-xs truncate">
+                      {proj.title}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="tag-predefined">
+                        {proj.categoryTag?.name || 'Chung'}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-medium text-slate-900 tabular-nums">
+                      {formatVnd(Number(proj.budget))}
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-600">
+                      {proj.durationWeeks} tuần
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`status-pill ${
+                          proj.status === 'OPEN'
+                            ? 'status-open'
+                            : proj.status === 'IN_PROGRESS'
+                            ? 'status-in-progress'
+                            : proj.status === 'COMPLETED'
+                            ? 'status-completed'
+                            : proj.status === 'UNDER_REVIEW'
+                            ? 'status-under-review'
+                            : 'status-draft'
+                        }`}
+                      >
+                        {proj.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <Link
+                        href={`/sme/projects/${proj.id}`}
+                        className="inline-flex items-center gap-1 text-brand-primary hover:text-brand-primary-hover font-medium"
+                      >
+                        Xem bài <ArrowUpRight className="w-3 h-3" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

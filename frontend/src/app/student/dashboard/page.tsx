@@ -22,37 +22,37 @@ export default function StudentDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="card-crisp p-6 bg-slate-900 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="bg-blue-600 text-white text-[11px] font-bold px-2 py-0.5 rounded">
+            <span className="bg-blue-50 text-brand-primary text-[11px] font-bold px-2 py-0.5 rounded">
               STUDENT DASHBOARD
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500">
               {studentProfile.university} · {studentProfile.major} ({studentProfile.year}th Year)
             </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Welcome back, {studentProfile.fullName}!
           </h1>
-          <p className="text-sm text-slate-300 mt-1 max-w-2xl">
-            You have <strong className="text-white">1 project in progress</strong> and{' '}
-            <strong className="text-white">{portfolioEntries.length} verified portfolio items</strong>.
+          <p className="text-sm text-slate-500 mt-1 max-w-2xl">
+            You have <strong className="text-slate-800">1 project in progress</strong> and{' '}
+            <strong className="text-slate-800">{portfolioEntries.length} verified portfolio items</strong>.
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <Link
             href="/student/browse"
-            className="btn-primary bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 text-sm"
+            className="btn-primary flex items-center gap-2 text-sm"
           >
             <Search className="h-4 w-4" />
             Browse Projects
           </Link>
           <Link
             href="/student/profile/stu-1"
-            className="btn-secondary bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 flex items-center gap-2 text-sm"
+            className="btn-secondary flex items-center gap-2 text-sm"
           >
-            <Award className="h-4 w-4 text-emerald-400" />
+            <Award className="h-4 w-4 text-emerald-500" />
             View Verified Portfolio
           </Link>
         </div>
@@ -66,7 +66,7 @@ export default function StudentDashboard() {
           </p>
           <p className="text-2xl font-bold text-slate-900 mt-1">1</p>
           <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5 text-blue-600" /> Milestone 3 in review
+            <Clock className="h-3.5 w-3.5 text-brand-primary" /> Milestone 3 in review
           </p>
         </div>
 
@@ -103,7 +103,7 @@ export default function StudentDashboard() {
 
       {/* Active Project Card */}
       {activeProject && (
-        <div className="card-crisp p-6 border-l-4 border-l-blue-600">
+        <div className="card-crisp p-6 border-l-4 border-l-brand-primary">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-2">
@@ -178,11 +178,11 @@ export default function StudentDashboard() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Briefcase className="h-5 w-5 text-blue-600" /> Recommended Projects for You
+            <Briefcase className="h-5 w-5 text-brand-primary" /> Recommended Projects for You
           </h2>
           <Link
             href="/student/browse"
-            className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            className="text-xs font-semibold text-brand-primary hover:text-brand-primary-hover flex items-center gap-1"
           >
             View all projects ({projects.length}) <ArrowRight className="h-3.5 w-3.5" />
           </Link>
@@ -220,7 +220,7 @@ export default function StudentDashboard() {
                   <p className="text-[11px] text-slate-500">{proj.durationWeeks} weeks</p>
                 </div>
                 <Link
-                  href="/student/browse"
+                  href={`/student/projects/${proj.id}`}
                   className="btn-secondary text-xs py-1.5 px-3"
                 >
                   View Details

@@ -75,10 +75,11 @@ env/
 
 # Agent/AI Customizations & Local State
 .agent/
+.agents/
 .gemini/
 .claude/
 .codex/
 .cursor/
 .github/prompts
 .github/skills
-
+openspec/

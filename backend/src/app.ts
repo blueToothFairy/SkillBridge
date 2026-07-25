@@ -2,6 +2,9 @@ import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import { corsOptions } from './config/cors';
 import healthRoutes from './modules/health/health.routes';
+import authRoutes from './modules/auth/auth.routes';
+import tagRoutes from './modules/tags/tag.routes';
+import projectRoutes from './modules/projects/project.routes';
 import { sendError } from './utils/response';
 
 const app: Application = express();
@@ -13,6 +16,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/health', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/tags', tagRoutes);
+app.use('/api/projects', projectRoutes);
 
 // Fallback 404 Route
 app.use((_req: Request, res: Response) => {

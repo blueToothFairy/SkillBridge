@@ -25,16 +25,16 @@ export const SMESidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-200 min-h-[calc(100vh-4rem)] flex flex-col justify-between p-4 shrink-0 border-r border-slate-800">
+    <aside className="w-64 bg-white text-slate-600 min-h-[calc(100vh-4rem)] flex flex-col justify-between p-4 shrink-0 border-r border-slate-200">
       <div>
-        <div className="mb-4 px-3 py-2 bg-slate-800 border border-slate-700 rounded-md">
+        <div className="mb-4 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
           <div className="flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-emerald-400" />
-            <span className="text-xs font-bold text-slate-100 tracking-wide uppercase">
+            <Briefcase className="h-4 w-4 text-brand-primary" />
+            <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
               SME Portal
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="text-[11px] text-slate-500 mt-0.5">
             Artisan Coffee Co. · SME Employer
           </p>
         </div>
@@ -49,11 +49,11 @@ export const SMESidebar: React.FC = () => {
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-blue-50/50 text-brand-primary font-semibold'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
-                <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <Icon className={`h-4 w-4 ${isActive ? 'text-brand-primary' : 'text-slate-400'}`} />
                 {item.label}
               </Link>
             );
@@ -62,12 +62,12 @@ export const SMESidebar: React.FC = () => {
       </div>
 
       {/* SME Escrow Info */}
-      <div className="mt-8 p-3 bg-slate-800/80 rounded-lg text-xs border border-slate-700">
-        <div className="flex items-center gap-1.5 font-bold text-emerald-400 mb-1">
+      <div className="mt-8 p-3.5 bg-slate-50 text-slate-600 rounded-lg text-xs border border-slate-200">
+        <div className="flex items-center gap-1.5 font-bold text-emerald-600 mb-1">
           <ShieldCheck className="h-4 w-4" />
           Predefined Tag Matching
         </div>
-        <p className="text-[11px] text-slate-400 leading-relaxed">
+        <p className="text-[11px] text-slate-500 leading-relaxed">
           SkillBridge matches student skill tags directly with your project requirements. Select 1 to 4 top candidates.
         </p>
       </div>

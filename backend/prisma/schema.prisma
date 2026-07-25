@@ -6,3 +6,110 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum UserRole {
+  STUDENT
+  SME
+  ADMIN
+}
+
+model User {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  studentProfile StudentProfile?
+  smeProfile     SmeProfile?
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName    String
+  university  String
+  major       String
+  year        Int
+  skills      Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+model SmeProfile {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName String
+  taxCode     String?
+  industry    String?
+  website     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  projects    Project[]
+
+  @@map("sme_profiles")
+}
+
+enum TagType {
+  CATEGORY
+  SKILL
+}
+
+enum ProjectStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  UNDER_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum EscrowStatus {
+  NONE
+  HELD
+  RELEASED
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  type      TagType
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  categorizedProjects Project[] @relation("ProjectCategoryTag")
+
+  @@map("tags")
+}
+
+model Project {
+  id                String        @id @default(uuid())
+  smeId             String
+  sme               SmeProfile    @relation(fields: [smeId], references: [id], onDelete: Cascade)
+  title             String
+  description       String        @db.Text
+  categoryTagId     String
+  categoryTag       Tag           @relation("ProjectCategoryTag", fields: [categoryTagId], references: [id])
+  requiredSkillTags Json
+  budget            Decimal       @db.Decimal(12, 2)
+  durationWeeks     Int
+  maxApplicants     Int           @default(5)
+  deadline          DateTime
+  status            ProjectStatus @default(OPEN)
+  escrowStatus      EscrowStatus  @default(NONE)
+  acceptedAt        DateTime?
+  isAutoAccepted    Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("projects")
+}
+

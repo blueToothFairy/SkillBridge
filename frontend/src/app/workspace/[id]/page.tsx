@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
+import { parseMarkdown } from '@/lib/markdown';
 import {
   CheckCircle2,
   Clock,
@@ -83,7 +84,7 @@ export default function ProjectWorkspacePage() {
               <div className="flex items-center gap-2 mt-0.5">
                 <div className="w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
                   <div
-                    className="bg-blue-600 h-full transition-all duration-300"
+                    className="bg-brand-primary h-full transition-all duration-300"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
@@ -108,7 +109,7 @@ export default function ProjectWorkspacePage() {
             {role === 'SME' && (
               <Link
                 href={`/escrow/${project.id}`}
-                className="btn-primary bg-blue-600 hover:bg-blue-700 text-xs py-2 px-4"
+                className="btn-primary text-xs py-2 px-4"
               >
                 Review Acceptance & Escrow
               </Link>
@@ -124,7 +125,7 @@ export default function ProjectWorkspacePage() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 border-b-2 transition-colors ${
                 activeTab === tab
-                  ? 'border-blue-600 text-blue-600'
+                  ? 'border-brand-primary text-brand-primary'
                   : 'border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
@@ -141,7 +142,7 @@ export default function ProjectWorkspacePage() {
           {/* Project Brief Card (Photo #4 match) */}
           <div className="card-crisp p-5 bg-white space-y-3">
             <h2 className="text-base font-bold text-slate-900">Project Brief</h2>
-            <p className="text-xs text-slate-600 leading-relaxed">{project.description}</p>
+            <div className="space-y-1">{parseMarkdown(project.description)}</div>
             <div className="grid grid-cols-3 gap-4 pt-3 border-t border-slate-100 text-xs">
               <div>
                 <span className="text-slate-500 block">Client</span>
@@ -235,9 +236,9 @@ export default function ProjectWorkspacePage() {
 
                     {/* Deliverable URL display if submitted/accepted */}
                     {m.deliverableUrl && (
-                      <div className="p-2.5 bg-slate-50 rounded border border-slate-200 flex items-center justify-between text-xs">
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 truncate">
-                          <FileText className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                          <FileText className="h-3.5 w-3.5 text-brand-primary shrink-0" />
                           <span className="font-mono text-slate-700 truncate">
                             {m.deliverableUrl}
                           </span>
@@ -246,7 +247,7 @@ export default function ProjectWorkspacePage() {
                           href={m.deliverableUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-blue-600 font-semibold hover:underline flex items-center gap-1 shrink-0 ml-2"
+                          className="text-brand-primary font-semibold hover:text-brand-primary-hover hover:underline flex items-center gap-1 shrink-0 ml-2"
                         >
                           Link <ExternalLink className="h-3 w-3" />
                         </a>
@@ -255,7 +256,7 @@ export default function ProjectWorkspacePage() {
 
                     {/* Revision Feedback alert */}
                     {isRevision && m.revisionFeedback && (
-                      <div className="p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+                      <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
                         <strong>SME Feedback:</strong> {m.revisionFeedback}
                       </div>
                     )}
@@ -264,8 +265,8 @@ export default function ProjectWorkspacePage() {
                     {role === 'STUDENT' && (m.status === 'PENDING' || isRevision) && (
                       <div className="pt-2">
                         {activeMilestoneForSubmit === m.id ? (
-                          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md space-y-2">
-                            <label className="text-xs font-bold text-blue-900 block">
+                          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                            <label className="text-xs font-bold text-slate-800 block">
                               Submit Deliverable URL (GitHub / Figma / Google Drive)
                             </label>
                             <div className="flex items-center gap-2">
@@ -274,11 +275,11 @@ export default function ProjectWorkspacePage() {
                                 value={deliverableInput}
                                 onChange={(e) => setDeliverableInput(e.target.value)}
                                 placeholder="https://figma.com/file/your-deliverable-link"
-                                className="flex-1 text-xs p-2 bg-white border border-slate-300 rounded focus:outline-none focus:border-blue-500"
+                                className="flex-1 text-xs p-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                               />
                               <button
                                 onClick={() => handleSubmitDeliverable(m.id)}
-                                className="btn-primary bg-blue-600 hover:bg-blue-700 text-xs py-2 px-3 flex items-center gap-1"
+                                className="btn-primary text-xs py-2 px-3 flex items-center gap-1"
                               >
                                 <Send className="h-3 w-3" /> Submit
                               </button>
@@ -287,7 +288,7 @@ export default function ProjectWorkspacePage() {
                         ) : (
                           <button
                             onClick={() => setActiveMilestoneForSubmit(m.id)}
-                            className="btn-secondary text-xs py-1 px-3"
+                            className="btn-secondary text-xs py-1.5 px-3"
                           >
                             Submit Deliverable URL
                           </button>
@@ -306,7 +307,7 @@ export default function ProjectWorkspacePage() {
                         </button>
                         <button
                           onClick={() => setShowRevisionModal(m.id)}
-                          className="btn-secondary text-xs py-1.5 px-3 text-red-600 border-red-300 hover:bg-red-50"
+                          className="btn-secondary text-xs py-1.5 px-3 text-danger-state border-red-200 hover:bg-rose-50/50"
                         >
                           Request Revision
                         </button>
@@ -369,11 +370,11 @@ export default function ProjectWorkspacePage() {
             </div>
           </div>
 
-          <div className="card-crisp p-4 bg-slate-900 text-white space-y-2 text-xs">
-            <div className="flex items-center gap-2 text-blue-400 font-bold">
-              <MessageSquare className="h-4 w-4" /> Integrated External Tools
+          <div className="card-crisp p-4 bg-slate-50 text-slate-600 space-y-2 text-xs">
+            <div className="flex items-center gap-2 text-slate-800 font-bold">
+              <MessageSquare className="h-4 w-4 text-brand-primary" /> Integrated External Tools
             </div>
-            <p className="text-slate-300 leading-relaxed text-[11px]">
+            <p className="text-slate-500 leading-relaxed text-[11px]">
               In MVP, team collaboration occurs via your preferred external tools (Google Drive, Figma, GitHub, Discord). Submit deliverable URLs above.
             </p>
           </div>
@@ -383,7 +384,7 @@ export default function ProjectWorkspacePage() {
       {/* Revision Request Modal */}
       {showRevisionModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-300 max-w-md w-full p-6 shadow-xl space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 max-w-md w-full p-6 shadow-xl space-y-4">
             <h3 className="text-lg font-bold text-slate-900">Request Milestone Revision</h3>
             <p className="text-xs text-slate-500">
               Provide clear feedback for the student to update their deliverable.
@@ -393,7 +394,7 @@ export default function ProjectWorkspacePage() {
               value={revisionFeedback}
               onChange={(e) => setRevisionFeedback(e.target.value)}
               placeholder="e.g. Please refine the secondary color palette vectors and upload high-res SVGs."
-              className="w-full text-xs p-3 border border-slate-300 rounded-md focus:outline-none focus:border-blue-500"
+              className="w-full text-xs p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
             />
             <div className="flex justify-end gap-2">
               <button
@@ -404,7 +405,7 @@ export default function ProjectWorkspacePage() {
               </button>
               <button
                 onClick={() => handleRequestRevision(showRevisionModal)}
-                className="btn-primary bg-red-600 hover:bg-red-700 text-xs"
+                className="btn-primary bg-danger-state hover:bg-red-700 text-xs"
               >
                 Send Revision Request
               </button>
