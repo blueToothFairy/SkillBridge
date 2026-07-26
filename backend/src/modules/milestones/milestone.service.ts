@@ -1,12 +1,69 @@
-import { PrismaClient, MilestoneStatus, ProjectStatus } from '@prisma/client';
+import { MilestoneStatus, ProjectStatus } from '@prisma/client';
+import { prisma } from '../../config/prisma';
 
-const prisma = new PrismaClient();
+export interface CreateMilestoneInput {
+  title: string;
+  description: string;
+  deadline: string | Date;
+  amountVnd: number;
+}
 
 export async function getMilestones(projectId: string) {
   return await prisma.milestone.findMany({
     where: { projectId },
     orderBy: { orderIndex: 'asc' },
   });
+}
+
+export async function createMilestones(
+  projectId: string,
+  requesterUserId: string,
+  isAdmin: boolean,
+  milestones: CreateMilestoneInput[]
+) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      sme: true,
+      milestones: { orderBy: { orderIndex: 'asc' } },
+    },
+  });
+
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  if (!isAdmin && project.sme.userId !== requesterUserId) {
+    throw new Error('Unauthorized to create milestones for this project');
+  }
+
+  if (
+    project.status !== ProjectStatus.DRAFT &&
+    project.status !== ProjectStatus.UNDER_REVIEW &&
+    project.status !== ProjectStatus.OPEN
+  ) {
+    throw new Error('Milestones can only be added before the project is matched');
+  }
+
+  if (!milestones.length) {
+    throw new Error('At least one milestone is required');
+  }
+
+  const startIndex = project.milestones.length;
+  const created = await prisma.milestone.createMany({
+    data: milestones.map((m, idx) => ({
+      projectId,
+      title: m.title.trim(),
+      description: m.description.trim(),
+      deadline: new Date(m.deadline),
+      orderIndex: startIndex + idx + 1,
+      amountVnd: m.amountVnd,
+      status: MilestoneStatus.PENDING,
+    })),
+  });
+
+  void created;
+  return getMilestones(projectId);
 }
 
 export async function submitDeliverable(milestoneId: string, studentUserId: string, deliverableUrl: string) {

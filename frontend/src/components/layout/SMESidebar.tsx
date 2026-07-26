@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   Building,
   PlusCircle,
-  Users,
   FolderGit2,
   CheckCircle2,
   ShieldCheck,
@@ -19,9 +18,8 @@ export const SMESidebar: React.FC = () => {
   const navItems = [
     { label: 'SME Dashboard', href: '/sme/dashboard', icon: Building },
     { label: 'Post a Project', href: '/sme/post-project', icon: PlusCircle },
-    { label: 'Applicants & Matching', href: '/sme/matching/proj-2', icon: Users },
-    { label: 'Project Workspaces', href: '/workspace/proj-1', icon: FolderGit2 },
-    { label: 'Acceptance & Escrow', href: '/escrow/proj-1', icon: CheckCircle2 },
+    { label: 'My Projects', href: '/sme/dashboard', icon: FolderGit2 },
+    { label: 'Escrow Guide', href: '/sme/dashboard', icon: CheckCircle2 },
   ];
 
   return (
@@ -35,7 +33,7 @@ export const SMESidebar: React.FC = () => {
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Artisan Coffee Co. · SME Employer
+            Quản lý dự án · Matching · Escrow
           </p>
         </div>
 
@@ -45,7 +43,7 @@ export const SMESidebar: React.FC = () => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <Link
-                key={item.href}
+                key={`${item.label}-${item.href}`}
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                   isActive
@@ -61,14 +59,13 @@ export const SMESidebar: React.FC = () => {
         </nav>
       </div>
 
-      {/* SME Escrow Info */}
       <div className="mt-8 p-3.5 bg-slate-50 text-slate-600 rounded-lg text-xs border border-slate-200">
         <div className="flex items-center gap-1.5 font-bold text-emerald-600 mb-1">
           <ShieldCheck className="h-4 w-4" />
           Predefined Tag Matching
         </div>
         <p className="text-[11px] text-slate-500 leading-relaxed">
-          SkillBridge matches student skill tags directly with your project requirements. Select 1 to 4 top candidates.
+          Mở dự án → Applicants để xem % skill match, confirm match, rồi ký quỹ escrow.
         </p>
       </div>
     </aside>

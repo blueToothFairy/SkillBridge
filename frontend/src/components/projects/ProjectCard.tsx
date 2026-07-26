@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ApiProject } from '@/types';
-import { Clock, DollarSign, Building2, Tag as TagIcon, ArrowUpRight } from 'lucide-react';
+import { Clock, Bookmark } from 'lucide-react';
 import Link from 'next/link';
 
 interface ProjectCardProps {
@@ -10,79 +10,97 @@ interface ProjectCardProps {
   onApplyClick?: (project: ApiProject) => void;
 }
 
+const TILE_COLORS = [
+  'bg-sky-100 text-sky-800',
+  'bg-emerald-100 text-emerald-800',
+  'bg-amber-100 text-amber-900',
+  'bg-violet-100 text-violet-800',
+  'bg-rose-100 text-rose-800',
+];
+
+function companyInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('') || 'SB';
+}
+
 export default function ProjectCard({ project, onApplyClick }: ProjectCardProps) {
   const companyName = project.sme?.companyName || 'Verified SME';
-  const categoryName = project.categoryTag?.name || 'General';
   const requiredSkills = Array.isArray(project.requiredSkillTags) ? project.requiredSkillTags : [];
+  const tileColor = TILE_COLORS[companyName.length % TILE_COLORS.length];
 
-  const formatVnd = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-  };
+  const formatBudget = (amount: number) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(
+      amount
+    );
 
   return (
-    <div className="card-crisp card-crisp-hover p-6 flex flex-col justify-between group">
+    <article className="card-crisp card-crisp-hover p-5 flex flex-col justify-between bg-white min-h-[260px]">
       <div>
-        {/* Header Badge */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-100 text-brand-primary text-xs font-semibold rounded-md">
-            <TagIcon className="w-3.5 h-3.5" />
-            {categoryName}
-          </span>
-          <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" /> {project.durationWeeks} tuần
-          </span>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div
+            className={`h-10 w-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${tileColor}`}
+          >
+            {companyInitials(companyName)}
+          </div>
+          <button
+            type="button"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+            aria-label="Bookmark"
+          >
+            <Bookmark className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Title & SME */}
-        <Link href={`/student/projects/${project.id}`} className="block">
-          <h3 className="text-lg font-bold text-slate-900 group-hover:text-brand-primary transition-colors line-clamp-2 mb-2">
+        <Link href={`/student/projects/${project.id}`} className="block group">
+          <h3 className="text-[16px] font-bold text-slate-900 leading-snug group-hover:text-brand-primary transition-colors line-clamp-2">
             {project.title}
           </h3>
         </Link>
-        <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-4">
-          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-          {companyName}
-        </p>
+        <p className="text-xs text-slate-500 mt-1 font-medium">{companyName}</p>
 
-        {/* Description */}
-        <p className="text-xs text-slate-600 line-clamp-3 mb-4 leading-relaxed">
+        <p className="text-[13px] text-slate-600 line-clamp-2 mt-3 leading-relaxed">
           {project.description}
         </p>
 
-        {/* Skill Badges */}
-        <div className="flex flex-wrap gap-1.5 mb-6">
-          {requiredSkills.slice(0, 5).map((skill, idx) => (
-            <span
-              key={idx}
-              className="px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-600 text-[11px] font-medium rounded-md"
-            >
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {requiredSkills.slice(0, 4).map((skill) => (
+            <span key={skill} className="tag-predefined text-[11px]">
               {skill}
             </span>
           ))}
-          {requiredSkills.length > 5 && (
-            <span className="px-2 py-1 bg-slate-50 text-slate-500 text-[11px] font-medium rounded-md">
-              +{requiredSkills.length - 5}
-            </span>
+          {requiredSkills.length > 4 && (
+            <span className="tag-predefined text-[11px]">+{requiredSkills.length - 4}</span>
           )}
         </div>
       </div>
 
-      {/* Footer Info & Action */}
-      <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-        <div>
-          <span className="text-[11px] text-slate-400 font-medium block">Ngân sách</span>
-          <span className="text-sm font-bold text-slate-900">
-            {formatVnd(Number(project.budget))}
+      <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500">
+          <span className="font-bold text-slate-800">{formatBudget(Number(project.budget))}</span>
+          <span className="inline-flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5" /> {project.durationWeeks} weeks
           </span>
+          <span>{project.applicantCount ?? 0} applicants</span>
         </div>
 
-        <Link
-          href={`/student/projects/${project.id}`}
-          className="btn-primary text-xs py-2 px-4 flex items-center gap-1"
-        >
-          Xem chi tiết <ArrowUpRight className="w-3.5 h-3.5" />
-        </Link>
+        {onApplyClick ? (
+          <button
+            type="button"
+            onClick={() => onApplyClick(project)}
+            className="btn-primary text-xs py-2 px-4 shrink-0"
+          >
+            Apply
+          </button>
+        ) : (
+          <Link href={`/student/projects/${project.id}`} className="btn-primary text-xs py-2 px-4 shrink-0">
+            Apply
+          </Link>
+        )}
       </div>
-    </div>
+    </article>
   );
 }

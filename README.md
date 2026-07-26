@@ -2,63 +2,68 @@
 
 SkillBridge là nền tảng kết nối sinh viên và các dự án thực tế từ doanh nghiệp/SME.
 
-## 📁 Cấu trúc dự án
+## Cấu trúc dự án
 
 ```text
 SkillBridge/
 ├── frontend/       # Next.js 16 (React 19, TypeScript, Tailwind CSS)
 ├── backend/        # Express.js (TypeScript, Prisma ORM, PostgreSQL)
-└── docs/           # Tài liệu thiết kế hệ thống (SRS, Architecture, Coding Standards)
+└── docs/           # SRS, Architecture, Coding Standards, MVP Checklist
 ```
 
 ---
 
-## 🚀 Hướng dẫn khởi chạy dự án
+## Hướng dẫn khởi chạy
 
-### 1. Khởi chạy Backend (`/backend`)
+### Yêu cầu
 
-Yêu cầu: Node.js (≥ 20 LTS)
+- Node.js ≥ 20 LTS
+- PostgreSQL (local hoặc Supabase) — cấu hình trong `backend/.env`
+
+### 1. Backend (`http://localhost:5000`)
 
 ```bash
-# 1. Di chuyển vào thư mục backend
 cd backend
-
-# 2. Cài đặt dependencies (nếu chưa cài)
 npm install
-
-# 3. Tạo file cấu hình môi trường (.env)
-# (Copy từ file .env.example)
-
-# 4. Khởi chạy server ở chế độ Development
+cp .env.example .env   # chỉnh DATABASE_URL + JWT_SECRET
+npx prisma generate
+npx prisma db push
+npm run db:seed
 npm run dev
 ```
 
-* **Server URL**: `http://localhost:5000`
-* **Kiểm tra trạng thái (Health Check)**: `http://localhost:5000/health`
+- Health check: `http://localhost:5000/health`
+- Demo accounts (password `password123`): xem [`docs/MVP_Coding_Checklist.md`](./docs/MVP_Coding_Checklist.md)
 
----
-
-### 2. Khởi chạy Frontend (`/frontend`)
+### 2. Frontend (`http://localhost:3000`)
 
 ```bash
-# 1. Di chuyển vào thư mục frontend
 cd frontend
-
-# 2. Cài đặt dependencies (nếu chưa cài)
 npm install
-
-# 3. Khởi chạy ứng dụng Next.js ở chế độ Development
 npm run dev
 ```
 
-* **Frontend App URL**: `http://localhost:3000`
+Tuỳ chọn: tạo `frontend/.env.local` với `NEXT_PUBLIC_API_URL=http://localhost:5000`.
 
 ---
 
-## 📚 Tài liệu dự án
+## Luồng test nhanh (đã có API thật)
 
-Tất cả tài liệu chi tiết được lưu trữ trong thư mục [`docs/`](./docs):
+1. Login SME `techcorp@sme.com` → Dashboard / Post project  
+2. Admin duyệt project (`UNDER_REVIEW` → `OPEN`) nếu cần  
+3. Login Student → Browse → Apply (cover letter)  
+4. SME → Project → Applicants (sort theo % skill match) → Confirm Match  
+5. SME Deposit Escrow (`PENDING` → `HELD`) → project `IN_PROGRESS`  
+6. Student/SME mở `/projects/:id/milestones` để submit/review  
 
-- [`SRS_MVP.md`](./docs/SRS_MVP.md): Yêu cầu phần mềm và luồng chức năng MVP.
-- [`System_Architecture.md`](./docs/System_Architecture.md): Kiến trúc hệ thống và luồng dữ liệu.
-- [`Source_Code_Documentation.md`](./docs/Source_Code_Documentation.md): Quy chuẩn mã nguồn và cấu trúc thư mục.
+> Acceptance / Certificate / Portfolio: Day 27–28 (Thịnh & Hà) — xem checklist.
+
+---
+
+## Tài liệu
+
+- [`docs/SRS_MVP.md`](./docs/SRS_MVP.md)
+- [`docs/System_Architecture.md`](./docs/System_Architecture.md)
+- [`docs/Source_Code_Documentation.md`](./docs/Source_Code_Documentation.md)
+- [`docs/Prototype_UI_Spec.md`](./docs/Prototype_UI_Spec.md) — **nguồn sự thật UI** (8 ảnh prototype + tokens/layout)
+- [`docs/MVP_Coding_Checklist.md`](./docs/MVP_Coding_Checklist.md) — checklist tiến độ theo ngày/người
