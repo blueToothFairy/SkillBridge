@@ -4,9 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetchProjectByIdApi } from '@/lib/api/projects';
+import { applyToProjectApi, fetchMyApplicationsApi } from '@/lib/api/applications';
 import { ApiProject } from '@/types';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { parseMarkdown } from '@/lib/markdown';
+import ApplyModal from '@/components/applications/ApplyModal';
+import EscrowBadge from '@/components/escrow/EscrowBadge';
 import {
   ArrowLeft,
   Calendar,
@@ -15,33 +18,29 @@ import {
   Tag as TagIcon,
   Building2,
   ExternalLink,
-  Award,
   CheckCircle2,
   AlertCircle,
-  X,
-  Send,
   Loader2,
-  Briefcase
 } from 'lucide-react';
 
 export default function StudentProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params?.id as string;
-  const { getProjectById } = useApp();
+  const { token, isAuthenticated, role } = useAuth();
 
   const [project, setProject] = useState<ApiProject | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Application State
-  const [isApplied, setIsApplied] = useState<boolean>(false);
-  const [appliedDate, setAppliedDate] = useState<string>('');
-  const [savedCoverMessage, setSavedCoverMessage] = useState<string>('');
-  const [isApplyModalOpen, setIsApplyModalOpen] = useState<boolean>(false);
-  const [coverMessage, setCoverMessage] = useState<string>('');
-  const [submittingApply, setSubmittingApply] = useState<boolean>(false);
-  const [applySuccess, setApplySuccess] = useState<boolean>(false);
+  const [isApplied, setIsApplied] = useState(false);
+  const [appliedDate, setAppliedDate] = useState('');
+  const [savedCoverMessage, setSavedCoverMessage] = useState('');
+  const [matchScore, setMatchScore] = useState<number | null>(null);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [submittingApply, setSubmittingApply] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
+  const [applySuccess, setApplySuccess] = useState(false);
 
   useEffect(() => {
     if (!projectId) return;
@@ -50,114 +49,62 @@ export default function StudentProjectDetailPage() {
       try {
         setLoading(true);
         setError(null);
-
-        // Fallback for mock projects
-        if (projectId.startsWith('proj-')) {
-          const mockProj = getProjectById(projectId);
-          if (mockProj) {
-            const apiProj: ApiProject = {
-              id: mockProj.id,
-              smeId: 'sme-1',
-              title: mockProj.title,
-              description: mockProj.description,
-              categoryTagId: 'cat-1',
-              categoryTag: { id: 'cat-1', name: mockProj.category, type: 'CATEGORY', isActive: true, createdAt: '' },
-              requiredSkillTags: mockProj.requiredSkills,
-              budget: mockProj.budgetVnd,
-              durationWeeks: mockProj.durationWeeks,
-              maxApplicants: mockProj.maxApplicants,
-              deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-              status: mockProj.status,
-              escrowStatus: mockProj.escrowStatus as any,
-              createdAt: mockProj.createdAt,
-              updatedAt: mockProj.createdAt,
-              sme: {
-                id: 'sme-1',
-                companyName: mockProj.smeCompany,
-                website: 'https://artisan.com'
-              }
-            };
-            setProject(apiProj);
-            
-            // Check local storage for application simulation
-            const appliedInfo = localStorage.getItem(`sb_applied_${projectId}`);
-            if (appliedInfo) {
-              const parsed = JSON.parse(appliedInfo);
-              setIsApplied(true);
-              setAppliedDate(parsed.date);
-              setSavedCoverMessage(parsed.coverMessage);
-            }
-            setLoading(false);
-            return;
-          }
-        }
-
         const data = await fetchProjectByIdApi(projectId);
         setProject(data);
 
-        // Check local storage for application simulation
-        const appliedInfo = localStorage.getItem(`sb_applied_${projectId}`);
-        if (appliedInfo) {
-          const parsed = JSON.parse(appliedInfo);
-          setIsApplied(true);
-          setAppliedDate(parsed.date);
-          setSavedCoverMessage(parsed.coverMessage);
+        if (token && role === 'STUDENT') {
+          const apps = await fetchMyApplicationsApi(token);
+          const mine = apps.find((a) => a.projectId === projectId && a.status !== 'WITHDRAWN');
+          if (mine) {
+            setIsApplied(true);
+            setAppliedDate(new Date(mine.createdAt).toLocaleDateString('vi-VN'));
+            setSavedCoverMessage(mine.coverMessage || '');
+            setMatchScore(mine.matchScore);
+          }
         }
       } catch (err: any) {
-        console.error('Failed to load project details:', err);
-        setError(err.message || 'Không thể tải thông tin dự án. Vui lòng thử lại sau.');
+        setError(err.message || 'Không thể tải thông tin dự án.');
       } finally {
         setLoading(false);
       }
     }
 
     loadProject();
-  }, [projectId, getProjectById]);
+  }, [projectId, token, role]);
 
   const handleOpenApplyModal = () => {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    setApplyError(null);
     setIsApplyModalOpen(true);
   };
 
-  const handleSubmitApply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!coverMessage.trim()) return;
-
+  const handleSubmitApply = async (coverMessage: string) => {
+    if (!token || !projectId) return;
     setSubmittingApply(true);
+    setApplyError(null);
     try {
-      // Simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const today = new Date().toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-
-      const applyData = {
-        date: today,
-        coverMessage,
-      };
-
-      localStorage.setItem(`sb_applied_${projectId}`, JSON.stringify(applyData));
+      const app = await applyToProjectApi(token, projectId, coverMessage);
       setIsApplied(true);
-      setAppliedDate(today);
-      setSavedCoverMessage(coverMessage);
+      setAppliedDate(new Date(app.createdAt).toLocaleDateString('vi-VN'));
+      setSavedCoverMessage(app.coverMessage || coverMessage);
+      setMatchScore(app.matchScore);
       setApplySuccess(true);
-
       setTimeout(() => {
         setIsApplyModalOpen(false);
         setApplySuccess(false);
-      }, 1500);
-    } catch (err) {
-      console.error(err);
+      }, 1400);
+    } catch (err: any) {
+      setApplyError(err.message || 'Ứng tuyển thất bại');
     } finally {
       setSubmittingApply(false);
     }
   };
 
-  const formatVnd = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-  };
+  const formatVnd = (amount: number) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
   if (loading) {
     return (
@@ -187,7 +134,6 @@ export default function StudentProjectDetailPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto py-4">
-      {/* Back Button */}
       <div>
         <Link
           href="/student/browse"
@@ -197,21 +143,17 @@ export default function StudentProjectDetailPage() {
         </Link>
       </div>
 
-      {/* Main Details Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <div className="card-crisp p-6 sm:p-8 bg-white space-y-6">
-            {/* Header Tags & Title */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-100 text-brand-primary text-xs font-semibold rounded-md">
                   <TagIcon className="w-3.5 h-3.5" />
                   {categoryName}
                 </span>
-                <span className="status-pill status-open">
-                  {project.status}
-                </span>
+                <span className="status-pill status-open">{project.status}</span>
+                <EscrowBadge status={project.escrowStatus} />
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                 {project.title}
@@ -224,17 +166,13 @@ export default function StudentProjectDetailPage() {
 
             <hr className="border-slate-100" />
 
-            {/* Description */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Mô tả chi tiết dự án</h3>
-              <div className="space-y-1">
-                {parseMarkdown(project.description)}
-              </div>
+              <div className="space-y-1">{parseMarkdown(project.description)}</div>
             </div>
 
             <hr className="border-slate-100" />
 
-            {/* Skill Tags */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Kỹ năng yêu cầu</h3>
               <div className="flex flex-wrap gap-2">
@@ -250,7 +188,6 @@ export default function StudentProjectDetailPage() {
             </div>
           </div>
 
-          {/* Application Detail (If applied) */}
           {isApplied && (
             <div className="card-crisp p-6 bg-white space-y-4 border-l-4 border-l-emerald-500">
               <div className="flex items-center gap-2 text-emerald-800">
@@ -260,64 +197,53 @@ export default function StudentProjectDetailPage() {
               <div className="text-xs space-y-2 text-slate-600">
                 <p>
                   <strong>Ngày nộp:</strong> {appliedDate}
+                  {matchScore !== null && (
+                    <>
+                      {' '}
+                      · <strong>Skill match:</strong> {matchScore}%
+                    </>
+                  )}
                 </p>
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                   <p className="font-semibold text-slate-700 mb-1">Thư giới thiệu của bạn:</p>
                   <p className="italic text-slate-600 leading-relaxed">{savedCoverMessage}</p>
                 </div>
-                <p className="text-[11px] text-slate-500 leading-normal">
-                  Doanh nghiệp {companyName} sẽ xem xét hồ sơ của bạn. Bạn sẽ nhận được thông báo tại Dashboard Sinh viên khi trạng thái thay đổi.
-                </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Right Column - Project Sidebar Stats */}
         <div className="space-y-6">
-          {/* Stats Box */}
           <div className="card-crisp p-6 bg-white space-y-5">
-            <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Thông tin dự án
-            </h3>
-
+            <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">Thông tin dự án</h3>
             <div className="space-y-4 text-xs text-slate-600">
               <div className="flex items-start gap-3">
                 <DollarSign className="w-5 h-5 text-brand-primary shrink-0" />
                 <div>
-                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Ngân sách dự kiến</span>
+                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Ngân sách</span>
                   <span className="font-bold text-slate-900 text-sm mt-0.5 block">
                     {formatVnd(Number(project.budget))}
                   </span>
                 </div>
               </div>
-
               <div className="flex items-start gap-3">
                 <Clock className="w-5 h-5 text-brand-primary shrink-0" />
                 <div>
-                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Thời gian thực hiện</span>
-                  <span className="font-bold text-slate-900 text-sm mt-0.5 block">
-                    {project.durationWeeks} tuần
-                  </span>
+                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Thời gian</span>
+                  <span className="font-bold text-slate-900 text-sm mt-0.5 block">{project.durationWeeks} tuần</span>
                 </div>
               </div>
-
               <div className="flex items-start gap-3">
                 <Calendar className="w-5 h-5 text-brand-primary shrink-0" />
                 <div>
-                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Hạn cuối nộp hồ sơ</span>
+                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Hạn nộp hồ sơ</span>
                   <span className="font-bold text-slate-900 text-sm mt-0.5 block">
-                    {new Date(project.deadline).toLocaleDateString('vi-VN', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })}
+                    {new Date(project.deadline).toLocaleDateString('vi-VN')}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Action Box */}
             <div className="pt-4 border-t border-slate-100">
               {project.status !== 'OPEN' ? (
                 <div className="p-3 bg-slate-50 border border-slate-200 text-slate-500 rounded-lg text-center text-xs font-semibold">
@@ -330,7 +256,7 @@ export default function StudentProjectDetailPage() {
               ) : (
                 <button
                   onClick={handleOpenApplyModal}
-                  className="w-full btn-primary py-3 font-semibold text-sm flex items-center justify-center gap-2"
+                  className="w-full btn-primary py-3 font-semibold text-sm"
                 >
                   Ứng tuyển dự án ngay
                 </button>
@@ -338,117 +264,37 @@ export default function StudentProjectDetailPage() {
             </div>
           </div>
 
-          {/* SME Brand Card */}
           <div className="card-crisp p-6 bg-white space-y-4">
-            <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Thông tin doanh nghiệp
-            </h3>
-
+            <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">Doanh nghiệp</h3>
             <div className="space-y-3 text-xs text-slate-600">
               <div>
-                <span className="text-slate-400 block text-[10px] font-medium uppercase">Tên doanh nghiệp</span>
-                <span className="font-bold text-slate-900 mt-0.5 block">
-                  {companyName}
-                </span>
+                <span className="text-slate-400 block text-[10px] font-medium uppercase">Tên</span>
+                <span className="font-bold text-slate-900 mt-0.5 block">{companyName}</span>
               </div>
-
-              {project.sme?.industry && (
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Lĩnh vực hoạt động</span>
-                  <span className="font-medium text-slate-900 mt-0.5 block">
-                    {project.sme.industry}
-                  </span>
-                </div>
-              )}
-
               {project.sme?.website && (
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Website doanh nghiệp</span>
-                  <a
-                    href={project.sme.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-brand-primary hover:underline font-semibold mt-0.5"
-                  >
-                    Truy cập website <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
+                <a
+                  href={project.sme.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-brand-primary hover:underline font-semibold"
+                >
+                  Website <ExternalLink className="w-3 h-3" />
+                </a>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Application Cover Letter Modal */}
-      {isApplyModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl border border-slate-200 max-w-lg w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95">
-            <button
-              onClick={() => setIsApplyModalOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {applySuccess ? (
-              <div className="py-8 text-center space-y-3">
-                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-                <h3 className="text-lg font-bold text-slate-900">Nộp hồ sơ thành công!</h3>
-                <p className="text-xs text-slate-600">
-                  Hồ sơ của bạn đã được ghi nhận. Hệ thống sẽ lưu trạng thái ứng tuyển của bạn.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmitApply} className="space-y-4">
-                <div className="mb-4">
-                  <span className="text-xs font-semibold text-brand-primary uppercase tracking-wider">Ứng tuyển dự án</span>
-                  <h3 className="text-lg font-bold text-slate-900 mt-1 line-clamp-1">{project.title}</h3>
-                  <p className="text-xs text-slate-500">{companyName}</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Thư ứng tuyển (Cover Letter) & Giới thiệu bản thân
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={coverMessage}
-                    onChange={(e) => setCoverMessage(e.target.value)}
-                    placeholder="Trình bày lý do bạn phù hợp với dự án, kỹ năng ứng dụng và cam kết thời gian..."
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all"
-                    required
-                  />
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsApplyModalOpen(false)}
-                    className="btn-secondary text-xs"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submittingApply}
-                    className="btn-primary text-xs py-2 px-5 flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {submittingApply ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang xử lý...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" /> Gửi Hồ Sơ Ứng Tuyển
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+      <ApplyModal
+        projectTitle={project.title}
+        isOpen={isApplyModalOpen}
+        isSubmitting={submittingApply}
+        error={applyError}
+        success={applySuccess}
+        onClose={() => setIsApplyModalOpen(false)}
+        onSubmit={handleSubmitApply}
+      />
     </div>
   );
 }
