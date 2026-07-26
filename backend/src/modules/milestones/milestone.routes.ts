@@ -1,8 +1,17 @@
 import { Router } from 'express';
-import { getMilestones, submitDeliverable, reviewMilestone, cancelSubmission } from './milestone.controller';
+import {
+  createMilestones,
+  getMilestones,
+  submitDeliverable,
+  reviewMilestone,
+  cancelSubmission,
+} from './milestone.controller';
 import { authenticateJwt, requireRole } from '../../middlewares/auth';
 
 const router = Router();
+
+// Create milestones for a project (also created inline via POST /api/projects)
+router.post('/', authenticateJwt, requireRole(['SME', 'ADMIN']), createMilestones);
 
 // Retrieve milestones for a project
 router.get('/', authenticateJwt, getMilestones);

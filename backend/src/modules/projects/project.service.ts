@@ -1,6 +1,5 @@
-import { PrismaClient, ProjectStatus } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { ProjectStatus } from '@prisma/client';
+import { prisma } from '../../config/prisma';
 
 export interface CreateMilestoneInput {
   title: string;
@@ -72,6 +71,8 @@ export async function getProjects(params: {
   status?: ProjectStatus;
   page?: number;
   limit?: number;
+  smeUserId?: string;
+  smeId?: string;
 }) {
   const page = params.page || 1;
   const limit = params.limit || 10;
@@ -79,10 +80,16 @@ export async function getProjects(params: {
 
   const where: any = {};
 
+  if (params.smeUserId) {
+    where.sme = { userId: params.smeUserId };
+  } else if (params.smeId) {
+    where.smeId = params.smeId;
+  }
+
   if (params.status) {
     where.status = params.status;
-  } else {
-    // Default to OPEN projects for public browse unless specified
+  } else if (!params.smeUserId && !params.smeId) {
+    // Default to OPEN projects for public browse unless SME "mine" filter
     where.status = ProjectStatus.OPEN;
   }
 

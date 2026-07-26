@@ -3,6 +3,48 @@ import { AuthenticatedRequest } from '../../middlewares/auth';
 import * as milestoneService from './milestone.service';
 import { sendSuccess, sendError } from '../../utils/response';
 
+export async function createMilestones(req: AuthenticatedRequest, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    const role = req.user?.role;
+    if (!userId || !role) {
+      return sendError(res, 'User identity unverified', 401, 'UNAUTHORIZED');
+    }
+
+    const { projectId, milestones } = req.body;
+    if (!projectId || !Array.isArray(milestones) || milestones.length === 0) {
+      return sendError(res, 'projectId and milestones[] are required', 400, 'VALIDATION_ERROR');
+    }
+
+    for (const m of milestones) {
+      if (!m.title || !m.description || !m.deadline || m.amountVnd === undefined) {
+        return sendError(
+          res,
+          'Each milestone requires title, description, deadline, amountVnd',
+          400,
+          'VALIDATION_ERROR'
+        );
+      }
+    }
+
+    const created = await milestoneService.createMilestones(
+      projectId,
+      userId,
+      role === 'ADMIN',
+      milestones
+    );
+    return sendSuccess(res, created, 201);
+  } catch (error: any) {
+    const msg = error.message || 'Failed to create milestones';
+    if (msg.includes('not found')) return sendError(res, msg, 404, 'NOT_FOUND');
+    if (msg.includes('Unauthorized')) return sendError(res, msg, 403, 'FORBIDDEN');
+    if (msg.includes('only be added') || msg.includes('At least')) {
+      return sendError(res, msg, 400, 'BAD_REQUEST');
+    }
+    return sendError(res, msg, 500, 'SERVER_ERROR');
+  }
+}
+
 export async function getMilestones(req: AuthenticatedRequest, res: Response) {
   try {
     const { projectId } = req.query;

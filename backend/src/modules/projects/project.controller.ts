@@ -75,7 +75,30 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
 
 export async function getProjects(req: AuthenticatedRequest, res: Response) {
   try {
-    const { categoryTagId, query, status, page, limit } = req.query;
+    const { categoryTagId, query, status, page, limit, mine, smeId } = req.query;
+
+    let smeUserId: string | undefined;
+    if (mine === 'true') {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return sendError(res, 'Authorization required for mine=true', 401, 'UNAUTHORIZED');
+      }
+      // Prefer JWT already parsed when middleware used; fallback decode via optional user
+      if (!req.user?.userId) {
+        // Lazy auth for public route: verify manually
+        try {
+          const { verifyToken } = await import('../../utils/jwt');
+          const payload = verifyToken(authHeader.split(' ')[1]);
+          req.user = payload;
+        } catch {
+          return sendError(res, 'Invalid or expired token', 401, 'INVALID_TOKEN');
+        }
+      }
+      if (req.user?.role !== 'SME' && req.user?.role !== 'ADMIN') {
+        return sendError(res, 'Only SME/Admin can list own projects', 403, 'FORBIDDEN');
+      }
+      smeUserId = req.user.role === 'SME' ? req.user.userId : undefined;
+    }
 
     const result = await projectService.getProjects({
       categoryTagId: categoryTagId as string | undefined,
@@ -83,6 +106,8 @@ export async function getProjects(req: AuthenticatedRequest, res: Response) {
       status: status as ProjectStatus | undefined,
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 10,
+      smeUserId,
+      smeId: smeId as string | undefined,
     });
 
     return sendSuccess(res, result.projects, 200, result.meta);
