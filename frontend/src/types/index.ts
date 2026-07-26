@@ -24,7 +24,8 @@ export type MilestoneStatus =
   | 'ACCEPTED'
   | 'REVISION_REQUIRED';
 
-export type EscrowStatus = 'PENDING' | 'LOCKED' | 'RELEASED';
+/** PENDING → HELD → RELEASED (HELD ≈ SRS LOCKED) */
+export type EscrowStatus = 'PENDING' | 'HELD' | 'RELEASED' | 'LOCKED' | 'NONE';
 
 export type PredefinedSkill =
   | 'HTML'
