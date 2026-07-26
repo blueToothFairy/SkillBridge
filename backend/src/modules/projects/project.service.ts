@@ -2,6 +2,13 @@ import { PrismaClient, ProjectStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+export interface CreateMilestoneInput {
+  title: string;
+  description: string;
+  deadline: string | Date;
+  amountVnd: number;
+}
+
 export interface CreateProjectInput {
   title: string;
   description: string;
@@ -11,6 +18,7 @@ export interface CreateProjectInput {
   durationWeeks: number;
   maxApplicants?: number;
   deadline?: string | Date;
+  milestones?: CreateMilestoneInput[];
 }
 
 export async function createProject(userId: string, input: CreateProjectInput) {
@@ -25,7 +33,7 @@ export async function createProject(userId: string, input: CreateProjectInput) {
 
   const deadlineDate = input.deadline
     ? new Date(input.deadline)
-    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    : new Date(Date.now() + Number(input.durationWeeks) * 7 * 24 * 60 * 60 * 1000);
 
   return await prisma.project.create({
     data: {
@@ -36,13 +44,24 @@ export async function createProject(userId: string, input: CreateProjectInput) {
       requiredSkillTags: input.requiredSkillTags || [],
       budget: input.budget,
       durationWeeks: input.durationWeeks,
-      maxApplicants: input.maxApplicants || 5,
+      maxApplicants: input.maxApplicants || 4,
       deadline: deadlineDate,
       status: ProjectStatus.UNDER_REVIEW,
+      milestones: input.milestones && input.milestones.length > 0 ? {
+        create: input.milestones.map((m, idx) => ({
+          title: m.title.trim(),
+          description: m.description.trim(),
+          deadline: new Date(m.deadline),
+          orderIndex: idx + 1,
+          status: 'PENDING',
+          amountVnd: m.amountVnd,
+        }))
+      } : undefined,
     },
     include: {
       sme: true,
       categoryTag: true,
+      milestones: true,
     },
   });
 }
@@ -128,6 +147,16 @@ export async function getProjectById(id: string) {
         },
       },
       categoryTag: true,
+      milestones: {
+        orderBy: {
+          orderIndex: 'asc',
+        },
+      },
+      _count: {
+        select: {
+          applications: true,
+        },
+      },
     },
   });
 }

@@ -244,6 +244,8 @@ export interface ApiProject {
     industry?: string;
     website?: string;
   };
+  milestones?: Milestone[];
+  applicantCount?: number;
 }
 
 export interface CreateProjectPayload {
@@ -255,6 +257,12 @@ export interface CreateProjectPayload {
   durationWeeks: number;
   maxApplicants?: number;
   deadline?: string;
+  milestones?: {
+    title: string;
+    description: string;
+    deadline: string;
+    amountVnd: number;
+  }[];
 }
 
 

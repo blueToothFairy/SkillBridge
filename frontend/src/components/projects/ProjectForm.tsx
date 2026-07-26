@@ -6,7 +6,20 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchTagsApi } from '@/lib/api/tags';
 import { createProjectApi, updateProjectApi } from '@/lib/api/projects';
 import { Tag, ApiProject } from '@/types';
-import { Check, Plus, Trash2, ShieldCheck, ArrowRight, Loader2, Bold, Heading } from 'lucide-react';
+import {
+  Check,
+  Plus,
+  Trash2,
+  ShieldCheck,
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
+  Bold,
+  Heading,
+  Calendar,
+  DollarSign,
+  AlertCircle,
+} from 'lucide-react';
 
 interface ProjectFormProps {
   onSuccess?: () => void;
@@ -16,7 +29,7 @@ interface ProjectFormProps {
 
 export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: ProjectFormProps) {
   const router = useRouter();
-  const { token, isAuthenticated } = useAuth();
+  const { token } = useAuth();
 
   const [categories, setCategories] = useState<Tag[]>([]);
   const [skillTags, setSkillTags] = useState<Tag[]>([]);
@@ -24,20 +37,81 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
 
   const DEFAULT_DESCRIPTION_TEMPLATE = `### Job Description (JD)\n- [Nhập mô tả chi tiết công việc tại đây]\n\n### Skills\n- [Nhập các kỹ năng yêu cầu tại đây]`;
 
-  // Form Fields
+  // Step state
+  const [step, setStep] = useState<number>(1);
+
+  // Step 1: Basic Info Fields
   const [title, setTitle] = useState(projectToEdit ? projectToEdit.title : '');
   const [categoryTagId, setCategoryTagId] = useState(projectToEdit ? projectToEdit.categoryTagId : '');
   const [description, setDescription] = useState(projectToEdit ? projectToEdit.description : DEFAULT_DESCRIPTION_TEMPLATE);
-  const [budgetVnd, setBudgetVnd] = useState<number>(projectToEdit ? Number(projectToEdit.budget) : 15000000);
   const [durationWeeks, setDurationWeeks] = useState<number>(projectToEdit ? projectToEdit.durationWeeks : 4);
-  const [maxApplicants, setMaxApplicants] = useState<number>(projectToEdit ? projectToEdit.maxApplicants : 5);
+  const [maxApplicants, setMaxApplicants] = useState<number>(projectToEdit ? projectToEdit.maxApplicants : 4);
   const [selectedSkillNames, setSelectedSkillNames] = useState<string[]>(projectToEdit ? projectToEdit.requiredSkillTags : []);
+
+  // Step 2: Milestones list state
+  const [milestones, setMilestones] = useState<{
+    title: string;
+    description: string;
+    deadline: string;
+    amountVnd: number;
+  }[]>(
+    projectToEdit?.milestones
+      ? projectToEdit.milestones.map((m) => ({
+          title: m.title,
+          description: m.description,
+          deadline: new Date(m.deadline).toISOString().substring(0, 10),
+          amountVnd: Number(m.amountVnd),
+        }))
+      : []
+  );
+
+  // New Milestone Form inputs
+  const [newMTitle, setNewMTitle] = useState('');
+  const [newMDesc, setNewMDesc] = useState('');
+  const [newMDeadline, setNewMDeadline] = useState('');
+  const [newMAmount, setNewMAmount] = useState<number>(1000000);
 
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Dynamic budget calculation (Sum of all milestones budget)
+  const totalBudget = milestones.reduce((sum, m) => sum + Number(m.amountVnd), 0);
+
+  useEffect(() => {
+    async function loadTags() {
+      try {
+        setLoadingTags(true);
+        const [catList, skillList] = await Promise.all([
+          fetchTagsApi('CATEGORY'),
+          fetchTagsApi('SKILL'),
+        ]);
+        setCategories(catList);
+        setSkillTags(skillList);
+
+        if (!categoryTagId && catList.length > 0) {
+          setCategoryTagId(catList[0].id);
+        }
+      } catch (err: any) {
+        console.error('Failed to load tags:', err);
+      } finally {
+        setLoadingTags(false);
+      }
+    }
+    loadTags();
+  }, [categoryTagId]);
+
+  const handleToggleSkill = (skillName: string) => {
+    if (selectedSkillNames.includes(skillName)) {
+      setSelectedSkillNames(selectedSkillNames.filter((s) => s !== skillName));
+    } else {
+      if (selectedSkillNames.length < 10) {
+        setSelectedSkillNames([...selectedSkillNames, skillName]);
+      }
+    }
+  };
 
   const handleInsertFormat = (formatType: 'bold' | 'heading') => {
     const textarea = textareaRef.current;
@@ -90,44 +164,48 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
     }, 0);
   };
 
-  useEffect(() => {
-    async function loadTags() {
-      try {
-        setLoadingTags(true);
-        const [catList, skillList] = await Promise.all([
-          fetchTagsApi('CATEGORY'),
-          fetchTagsApi('SKILL'),
-        ]);
-        setCategories(catList);
-        setSkillTags(skillList);
-
-        if (!categoryTagId && catList.length > 0) {
-          setCategoryTagId(catList[0].id);
-        }
-      } catch (err: any) {
-        console.error('Failed to load tags:', err);
-      } finally {
-        setLoadingTags(false);
-      }
+  const handleAddMilestone = () => {
+    setErrorMsg(null);
+    if (!newMTitle.trim()) {
+      setErrorMsg('Vui lòng điền tiêu đề cột mốc');
+      return;
     }
-    loadTags();
-  }, [categoryTagId]);
-
-  const handleToggleSkill = (skillName: string) => {
-    if (selectedSkillNames.includes(skillName)) {
-      setSelectedSkillNames(selectedSkillNames.filter((s) => s !== skillName));
-    } else {
-      if (selectedSkillNames.length < 10) {
-        setSelectedSkillNames([...selectedSkillNames, skillName]);
-      }
+    if (!newMDesc.trim()) {
+      setErrorMsg('Vui lòng điền mô tả cột mốc');
+      return;
     }
+    if (!newMDeadline) {
+      setErrorMsg('Vui lòng chọn hạn chót cột mốc');
+      return;
+    }
+    if (newMAmount <= 0) {
+      setErrorMsg('Số tiền thanh toán phải lớn hơn 0');
+      return;
+    }
+
+    setMilestones([
+      ...milestones,
+      {
+        title: newMTitle.trim(),
+        description: newMDesc.trim(),
+        deadline: newMDeadline,
+        amountVnd: Number(newMAmount),
+      },
+    ]);
+
+    // Reset inputs
+    setNewMTitle('');
+    setNewMDesc('');
+    setNewMDeadline('');
+    setNewMAmount(1000000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setSuccessMsg(null);
+  const handleDeleteMilestone = (idx: number) => {
+    setMilestones(milestones.filter((_, i) => i !== idx));
+  };
 
+  const handleNextStep = () => {
+    setErrorMsg(null);
     if (!title.trim()) {
       setErrorMsg('Vui lòng nhập tiêu đề dự án');
       return;
@@ -140,6 +218,33 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
       setErrorMsg('Vui lòng nhập mô tả chi tiết');
       return;
     }
+    setStep(2);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    if (milestones.length === 0) {
+      setErrorMsg('Dự án phải có ít nhất 1 cột mốc thanh toán');
+      return;
+    }
+
+    // Dynamic duration in weeks & maximum deadline calculation
+    const calculatedDurationWeeks = (() => {
+      const deadlines = milestones.map((m) => new Date(m.deadline).getTime());
+      const maxTime = Math.max(...deadlines);
+      const diffTime = maxTime - Date.now();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return Math.max(1, Math.ceil(diffDays / 7));
+    })();
+
+    const calculatedDeadline = (() => {
+      const deadlines = milestones.map((m) => new Date(m.deadline).getTime());
+      const maxTime = Math.max(...deadlines);
+      return new Date(maxTime).toISOString();
+    })();
 
     setSubmitting(true);
     try {
@@ -150,9 +255,10 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
             description,
             categoryTagId,
             requiredSkillTags: selectedSkillNames,
-            budget: budgetVnd,
-            durationWeeks,
+            budget: totalBudget,
+            durationWeeks: calculatedDurationWeeks,
             maxApplicants,
+            deadline: calculatedDeadline,
           });
           setSuccessMsg('Cập nhật dự án thành công!');
         } else {
@@ -161,9 +267,11 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
             description,
             categoryTagId,
             requiredSkillTags: selectedSkillNames,
-            budget: budgetVnd,
-            durationWeeks,
+            budget: totalBudget,
+            durationWeeks: calculatedDurationWeeks,
             maxApplicants,
+            deadline: calculatedDeadline,
+            milestones,
           });
           setSuccessMsg('Đăng bài dự án thành công!');
         }
@@ -185,221 +293,373 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
     }
   };
 
+  const formatVnd = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="card-crisp p-6 sm:p-8">
-      {errorMsg && (
-        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm font-medium">
-          {errorMsg}
+    <div className="space-y-6">
+      {/* Wizard Progress Steps Indicator */}
+      <div className="flex items-center justify-center gap-2 max-w-md mx-auto py-2">
+        <div className="flex items-center gap-1">
+          <span
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              step === 1 ? 'bg-brand-primary text-white' : 'bg-emerald-500 text-white'
+            }`}
+          >
+            {step > 1 ? <Check className="w-3.5 h-3.5" /> : '1'}
+          </span>
+          <span className={`text-xs font-semibold ${step === 1 ? 'text-slate-900' : 'text-slate-500'}`}>
+            Thông tin cơ bản
+          </span>
         </div>
-      )}
-
-      {successMsg && (
-        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm font-medium flex items-center gap-2">
-          <Check className="w-5 h-5 text-emerald-600" />
-          {successMsg}
+        <div className={`h-[1px] w-12 ${step > 1 ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+        <div className="flex items-center gap-1">
+          <span
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              step === 2 ? 'bg-brand-primary text-white' : 'bg-slate-200 text-slate-500'
+            }`}
+          >
+            2
+          </span>
+          <span className={`text-xs font-semibold ${step === 2 ? 'text-slate-900' : 'text-slate-500'}`}>
+            Kế hoạch Cột mốc (Milestones)
+          </span>
         </div>
-      )}
+      </div>
 
-      {/* Basic Info */}
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-semibold text-slate-900 mb-2">
-            Tiêu đề bài viết dự án <span className="text-rose-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ví dụ: Xây dựng Website E-commerce cho Thương hiệu Thời trang"
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all text-sm"
-            required
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="card-crisp p-6 sm:p-8 bg-white">
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm font-medium flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Danh mục dự án <span className="text-rose-500">*</span>
-            </label>
-            {loadingTags ? (
-              <div className="flex items-center gap-2 py-3 text-slate-400 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" /> Đang tải danh mục...
-              </div>
-            ) : (
-              <select
-                value={categoryTagId}
-                onChange={(e) => setCategoryTagId(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all text-sm"
+        {successMsg && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm font-medium flex items-center gap-2">
+            <Check className="w-5 h-5 text-emerald-600" />
+            {successMsg}
+          </div>
+        )}
+
+        {/* STEP 1: Basic Info */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Tiêu đề bài viết dự án <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ví dụ: Xây dựng Website E-commerce cho Thương hiệu Thời trang"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all text-sm"
                 required
-              >
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Số ứng viên tối đa
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={maxApplicants}
-              onChange={(e) => setMaxApplicants(Number(e.target.value))}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all text-sm"
-            />
-          </div>
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Danh mục dự án <span className="text-rose-500">*</span>
+                </label>
+                {loadingTags ? (
+                  <div className="flex items-center gap-2 py-3 text-slate-400 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin animate-infinite" /> Đang tải danh mục...
+                  </div>
+                ) : (
+                  <select
+                    value={categoryTagId}
+                    onChange={(e) => setCategoryTagId(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all text-sm"
+                    required
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
-        {/* Budget & Duration */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Ngân sách dự kiến (VND) <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="number"
-              step={500000}
-              min={1000000}
-              value={budgetVnd}
-              onChange={(e) => setBudgetVnd(Number(e.target.value))}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all text-sm"
-              required
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              {budgetVnd.toLocaleString('vi-VN')} VNĐ
-            </p>
-          </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Số ứng viên tối đa (1–4)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={4}
+                  value={maxApplicants}
+                  onChange={(e) => setMaxApplicants(Math.min(4, Math.max(1, Number(e.target.value))))}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all text-sm"
+                />
+              </div>
+            </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Thời gian thực hiện (Tuần) <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={52}
-              value={durationWeeks}
-              onChange={(e) => setDurationWeeks(Number(e.target.value))}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all text-sm"
-              required
-            />
-          </div>
-        </div>
+            {/* Skill Tags selection */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-2">
+                Kỹ năng yêu cầu (Tối đa 10)
+              </label>
+              <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[52px]">
+                {skillTags.map((skill) => {
+                  const isSelected = selectedSkillNames.includes(skill.name);
+                  return (
+                    <button
+                      type="button"
+                      key={skill.id}
+                      onClick={() => handleToggleSkill(skill.name)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-brand-primary text-white shadow-xs'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3.5 h-3.5" />}
+                      {skill.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* Skill Tags selection */}
-        <div>
-          <label className="block text-sm font-semibold text-slate-900 mb-2">
-            Kỹ năng yêu cầu (Tối đa 10)
-          </label>
-          <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[52px]">
-            {skillTags.map((skill) => {
-              const isSelected = selectedSkillNames.includes(skill.name);
-              return (
-                <button
-                  type="button"
-                  key={skill.id}
-                  onClick={() => handleToggleSkill(skill.name)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-brand-primary text-white shadow-xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {isSelected && <Check className="w-3.5 h-3.5" />}
-                  {skill.name}
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-1">
+                Mô tả chi tiết bài viết <span className="text-rose-500">*</span>
+              </label>
+              <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
+                Hỗ trợ định dạng văn bản nâng cao. Nhấp vào các nút bên dưới để chèn nhanh tiêu đề hoặc in đậm văn bản.
+              </p>
+
+              <div className="flex flex-col rounded-lg border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-brand-primary focus-within:border-brand-primary transition-all">
+                {/* Toolbar */}
+                <div className="flex items-center gap-1 bg-slate-50 border-b border-slate-200 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => handleInsertFormat('bold')}
+                    className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                    title="In đậm (Bold)"
+                  >
+                    <Bold className="w-3.5 h-3.5 text-slate-700" />
+                    <span>In đậm</span>
+                  </button>
+                  <div className="w-[1px] h-4 bg-slate-200 mx-1.5" />
+                  <button
+                    type="button"
+                    onClick={() => handleInsertFormat('heading')}
+                    className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                    title="Tiêu đề (Heading H3)"
+                  >
+                    <Heading className="w-3.5 h-3.5 text-slate-700" />
+                    <span>Tiêu đề H3</span>
+                  </button>
+                </div>
+
+                {/* Textarea */}
+                <textarea
+                  ref={textareaRef}
+                  rows={8}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Nêu rõ yêu cầu dự án, sản phẩm bàn giao mong muốn và tiêu chí đánh giá..."
+                  className="w-full px-4 py-3 bg-white border-0 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 transition-all text-xs sm:text-sm font-mono resize-y"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Step 1 Actions */}
+            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end gap-2 text-xs font-semibold">
+              {onCancel && (
+                <button type="button" onClick={onCancel} className="btn-secondary">
+                  Hủy
                 </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Mô tả chi tiết bài viết <span className="text-rose-500">*</span>
-          </label>
-          <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
-            Hỗ trợ định dạng văn bản nâng cao. Nhấp vào các nút bên dưới để chèn nhanh tiêu đề hoặc in đậm văn bản.
-          </p>
-
-          <div className="flex flex-col rounded-lg border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-brand-primary focus-within:border-brand-primary transition-all">
-            {/* Toolbar */}
-            <div className="flex items-center gap-1 bg-slate-50 border-b border-slate-200 px-3 py-2">
+              )}
               <button
                 type="button"
-                onClick={() => handleInsertFormat('bold')}
-                className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                title="In đậm (Bold)"
+                onClick={handleNextStep}
+                className="btn-primary inline-flex items-center gap-1.5 py-2.5 px-6"
               >
-                <Bold className="w-3.5 h-3.5 text-slate-700" />
-                <span>In đậm</span>
+                Tiếp tục thiết lập Cột mốc <ArrowRight className="w-4 h-4" />
               </button>
-              <div className="w-[1px] h-4 bg-slate-200 mx-1.5" />
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: Milestones Planner */}
+        {step === 2 && (
+          <div className="space-y-6">
+            {/* Dynamic Total Budget Summary card */}
+            <div className="p-5 bg-blue-50/70 border border-blue-200/60 rounded-xl space-y-2">
+              <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wider block">
+                Tổng ngân sách dự án
+              </span>
+              <p className="text-3xl font-extrabold text-slate-950 tracking-tight tabular-nums">
+                {formatVnd(totalBudget)}
+              </p>
+              <p className="text-xs text-slate-600 leading-relaxed max-w-2xl font-medium">
+                Tổng ngân sách dự án bằng tổng giá trị giải ngân của các cột mốc bàn giao bên dưới. 
+                SME không cần điền tổng tiền thủ công. Khi bạn thêm/xóa cột mốc, con số này sẽ cập nhật.
+              </p>
+            </div>
+
+            {/* Milestones list display */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
+                Kế hoạch Cột mốc giải ngân ({milestones.length})
+              </h3>
+
+              {milestones.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">
+                  Chưa có cột mốc nào. Hãy điền thông tin bên dưới để thêm cột mốc đầu tiên.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {milestones.map((m, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start justify-between gap-4 p-4 border border-slate-200/80 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition-colors text-xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-slate-200 text-slate-700 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                            MỐC {idx + 1}
+                          </span>
+                          <span className="font-bold text-slate-900 text-sm">{m.title}</span>
+                          <span className="font-semibold text-brand-primary">
+                            ({formatVnd(m.amountVnd)})
+                          </span>
+                        </div>
+                        <p className="text-slate-600 leading-relaxed">{m.description}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">
+                          Hạn chót hoàn thành: {new Date(m.deadline).toLocaleDateString('vi-VN')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMilestone(idx)}
+                        className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors shrink-0"
+                        title="Xóa cột mốc"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Add New Milestone Card Form */}
+            <div className="p-5 border border-dashed border-slate-300 rounded-xl bg-white space-y-4">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-brand-primary shrink-0" /> Thêm Cột mốc bàn giao mới
+              </h4>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tên cột mốc</label>
+                  <input
+                    type="text"
+                    value={newMTitle}
+                    onChange={(e) => setNewMTitle(e.target.value)}
+                    placeholder="Ví dụ: Cột mốc 1: Hoàn thiện bản mẫu UI/UX"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Mô tả sản phẩm bàn giao (Deliverables)</label>
+                  <textarea
+                    rows={2}
+                    value={newMDesc}
+                    onChange={(e) => setNewMDesc(e.target.value)}
+                    placeholder="Mô tả chi tiết sản phẩm sinh viên cần nộp tại cột mốc này (ví dụ: Link Figma 10 màn hình UI hoàn chỉnh...)"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" /> Hạn chót hoàn thành
+                    </label>
+                    <input
+                      type="date"
+                      value={newMDeadline}
+                      onChange={(e) => setNewMDeadline(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                      <DollarSign className="w-3.5 h-3.5 text-slate-400" /> Số tiền giải ngân (VND)
+                    </label>
+                    <input
+                      type="number"
+                      step={500000}
+                      min={0}
+                      value={newMAmount}
+                      onChange={(e) => setNewMAmount(Number(e.target.value))}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none"
+                    />
+                    <p className="mt-1 text-[10px] text-slate-400 font-medium">
+                      (= {newMAmount.toLocaleString('vi-VN')} VNĐ)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <button
                 type="button"
-                onClick={() => handleInsertFormat('heading')}
-                className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                title="Tiêu đề (Heading H3)"
+                onClick={handleAddMilestone}
+                className="btn-secondary text-xs py-2 w-full flex items-center justify-center gap-1.5 font-bold border-brand-primary/30 text-brand-primary hover:bg-blue-50/50"
               >
-                <Heading className="w-3.5 h-3.5 text-slate-700" />
-                <span>Tiêu đề H3</span>
+                <Plus className="w-4 h-4" /> Thêm Cột mốc vào danh sách
               </button>
             </div>
 
-            {/* Textarea */}
-            <textarea
-              ref={textareaRef}
-              rows={8}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Nêu rõ yêu cầu dự án, sản phẩm bàn giao mong muốn và tiêu chí đánh giá..."
-              className="w-full px-4 py-3 bg-white border-0 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 transition-all text-xs sm:text-sm font-mono resize-y"
-              required
-            />
+            {/* Step 2 Actions */}
+            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="btn-secondary text-xs py-2.5 px-4 flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-4 h-4" /> Quay lại Bước 1
+              </button>
+
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  Ký quỹ giải ngân tự động qua Cột mốc
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn-primary inline-flex items-center justify-center gap-2 px-6 py-2.5 disabled:opacity-50 text-white font-bold text-sm shadow-sm"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      {projectToEdit ? 'Lưu thay đổi' : 'Đăng dự án ngay'} <Check className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Submit Button */}
-      <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <ShieldCheck className="w-4 h-4 text-emerald-500" />
-          Ký quỹ đảm bảo thanh toán linh hoạt cho dự án
-        </div>
-
-        <div className="flex items-center gap-2">
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn-secondary text-xs"
-            >
-              Hủy
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="btn-primary inline-flex items-center justify-center gap-2 px-6 py-2.5 disabled:opacity-50 text-white font-medium text-sm transition-all"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Đang xử lý...
-              </>
-            ) : (
-              <>
-                {projectToEdit ? 'Lưu thay đổi' : 'Đăng dự án ngay'} <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </form>
+        )}
+      </form>
+    </div>
   );
 }
