@@ -25,12 +25,14 @@ export async function fetchProjectsApi(params?: {
   query?: string;
   page?: number;
   limit?: number;
+  status?: string;
 }): Promise<{ projects: ApiProject[]; meta: any }> {
   const url = new URL(`${API_BASE_URL}/api/projects`);
   if (params?.categoryTagId) url.searchParams.append('categoryTagId', params.categoryTagId);
   if (params?.query) url.searchParams.append('query', params.query);
   if (params?.page) url.searchParams.append('page', params.page.toString());
   if (params?.limit) url.searchParams.append('limit', params.limit.toString());
+  if (params?.status) url.searchParams.append('status', params.status);
 
   const res = await fetch(url.toString(), {
     method: 'GET',

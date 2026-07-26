@@ -20,7 +20,7 @@ export const StudentSidebar: React.FC = () => {
     { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
     { label: 'Browse Projects', href: '/student/browse', icon: Search },
     { label: 'My Applications', href: '/student/applications', icon: FileCheck },
-    { label: 'Project Workspace', href: '/workspace/proj-1', icon: FolderGit2 },
+    { label: 'Project Workspaces', href: '/workspace/proj-1', icon: FolderGit2 },
     { label: 'Verified Portfolio', href: '/student/profile/stu-1', icon: UserCheck },
     { label: 'Digital Certificates', href: '/certificates/cert-1', icon: Award },
   ];

@@ -11,10 +11,48 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       return sendError(res, 'User identity unverified', 401, 'UNAUTHORIZED');
     }
 
-    const { title, description, categoryTagId, requiredSkillTags, budget, durationWeeks, maxApplicants, deadline } = req.body;
+    const { title, description, categoryTagId, requiredSkillTags, budget, durationWeeks, maxApplicants, deadline, milestones } = req.body;
 
     if (!title || !description || !categoryTagId || !budget || !durationWeeks) {
       return sendError(res, 'Required fields: title, description, categoryTagId, budget, durationWeeks', 400, 'VALIDATION_ERROR');
+    }
+
+    const projectDeadline = deadline ? new Date(deadline) : new Date(Date.now() + Number(durationWeeks) * 7 * 24 * 60 * 60 * 1000);
+
+    if (!milestones || !Array.isArray(milestones)) {
+      return sendError(res, 'Milestones are required when creating a project', 400, 'VALIDATION_ERROR');
+    }
+
+    if (milestones.length < 1 || milestones.length > 10) {
+      return sendError(res, 'Project must have between 1 and 10 milestones', 400, 'VALIDATION_ERROR');
+    }
+
+    let milestoneBudgetSum = 0;
+    for (const m of milestones) {
+      if (!m.title || !m.description || !m.deadline || m.amountVnd === undefined) {
+        return sendError(res, 'Milestones must include: title, description, deadline, amountVnd', 400, 'VALIDATION_ERROR');
+      }
+      if (m.title.length < 3 || m.title.length > 200) {
+        return sendError(res, 'Milestone title must be 3-200 characters', 400, 'VALIDATION_ERROR');
+      }
+      if (m.description.length < 10 || m.description.length > 2000) {
+        return sendError(res, 'Milestone description must be 10-2000 characters', 400, 'VALIDATION_ERROR');
+      }
+
+      const msDeadline = new Date(m.deadline);
+      if (msDeadline.getTime() > projectDeadline.getTime()) {
+        return sendError(
+          res,
+          `Hạn chót của cột mốc "${m.title}" (${msDeadline.toLocaleDateString('vi-VN')}) không được vượt quá hạn chót của dự án (${projectDeadline.toLocaleDateString('vi-VN')} - dựa trên thời hạn ${durationWeeks} tuần).`,
+          400,
+          'VALIDATION_ERROR'
+        );
+      }
+      milestoneBudgetSum += Number(m.amountVnd);
+    }
+
+    if (milestoneBudgetSum !== Number(budget)) {
+      return sendError(res, `Sum of milestone budgets (${milestoneBudgetSum}) must equal total project budget (${budget})`, 400, 'VALIDATION_ERROR');
     }
 
     const newProject = await projectService.createProject(userId, {
@@ -25,7 +63,8 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       budget: Number(budget),
       durationWeeks: Number(durationWeeks),
       maxApplicants: maxApplicants ? Number(maxApplicants) : undefined,
-      deadline,
+      deadline: projectDeadline,
+      milestones,
     });
 
     return sendSuccess(res, newProject, 201);
@@ -61,7 +100,13 @@ export async function getProjectById(req: AuthenticatedRequest, res: Response) {
       return sendError(res, 'Project not found', 404, 'NOT_FOUND');
     }
 
-    return sendSuccess(res, project);
+    const { _count, ...rest } = project as any;
+    const result = {
+      ...rest,
+      applicantCount: _count?.applications || 0,
+    };
+
+    return sendSuccess(res, result);
   } catch (error: any) {
     return sendError(res, error.message || 'Failed to fetch project detail', 500, 'SERVER_ERROR');
   }

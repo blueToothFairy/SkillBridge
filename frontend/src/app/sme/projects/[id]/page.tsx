@@ -79,10 +79,7 @@ export default function SmeProjectDetailPage() {
 
       const data = await fetchProjectByIdApi(projectId);
       setProject(data);
-      
-      // Seed a simulated applicant count between 1 and 3 for demo purposes
-      const simulatedCount = Math.floor(1 + (projectId.charCodeAt(0) % 3));
-      setApplicantCount(simulatedCount);
+      setApplicantCount(data.applicantCount || 0);
     } catch (err: any) {
       console.error('Failed to load project details for SME:', err);
       setError(err.message || 'Không thể tải thông tin dự án. Vui lòng thử lại sau.');
@@ -296,7 +293,7 @@ export default function SmeProjectDetailPage() {
                 <div>
                   <span className="text-slate-400 block text-[10px] font-medium uppercase">Trạng thái hồ sơ</span>
                   <span className="font-bold text-slate-900 mt-0.5 block">
-                    {applicantCount} / {project.maxApplicants} ứng viên đã nộp
+                    Đã có {applicantCount} ứng viên ứng tuyển
                   </span>
                   <div className="mt-2">
                     <Link
@@ -306,19 +303,6 @@ export default function SmeProjectDetailPage() {
                       Mở bảng đánh giá matching ứng viên <ExternalLink className="w-3.5 h-3.5" />
                     </Link>
                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-medium uppercase">Trạng thái Ký quỹ (Escrow)</span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 font-semibold rounded-md text-[10px] mt-1">
-                    {project.escrowStatus || 'PENDING'}
-                  </span>
-                  <p className="text-[10px] text-slate-400 leading-tight mt-1">
-                    Ngân sách đã sẵn sàng trong platform bảo đảm thanh toán tự động.
-                  </p>
                 </div>
               </div>
             </div>
