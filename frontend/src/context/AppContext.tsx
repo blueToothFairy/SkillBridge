@@ -135,7 +135,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return {
             ...p,
             status: 'IN_PROGRESS',
-            escrowStatus: 'LOCKED',
+            escrowStatus: 'HELD',
             acceptedStudentId: selectedStudentIds[0] || 'stu-1',
             acceptedStudentName: 'Alex Chen',
             acceptedStudentUniversity: 'UCL',

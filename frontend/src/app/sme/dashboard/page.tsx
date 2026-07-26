@@ -17,16 +17,19 @@ import {
 } from 'lucide-react';
 
 export default function SMEDashboard() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     async function loadProjects() {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
-        // Fetch all projects (including DRAFT, OPEN, IN_PROGRESS, COMPLETED)
-        const res = await fetchProjectsApi({ limit: 50 });
+        const res = await fetchProjectsApi({ limit: 50, mine: true, token });
         setProjects(res.projects);
       } catch (err) {
         console.error('Failed to fetch SME dashboard projects:', err);
@@ -35,7 +38,7 @@ export default function SMEDashboard() {
       }
     }
     loadProjects();
-  }, []);
+  }, [token]);
 
   const totalProjects = projects.length;
   const openProjects = projects.filter((p) => p.status === 'OPEN');
@@ -189,12 +192,26 @@ export default function SMEDashboard() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <Link
-                        href={`/sme/projects/${proj.id}`}
-                        className="inline-flex items-center gap-1 text-brand-primary hover:text-brand-primary-hover font-medium"
-                      >
-                        Xem bài <ArrowUpRight className="w-3 h-3" />
-                      </Link>
+                      <div className="inline-flex items-center gap-2">
+                        <Link
+                          href={`/sme/projects/${proj.id}`}
+                          className="inline-flex items-center gap-1 text-brand-primary hover:text-brand-primary-hover font-medium"
+                        >
+                          Xem <ArrowUpRight className="w-3 h-3" />
+                        </Link>
+                        <Link
+                          href={`/sme/projects/${proj.id}/applicants`}
+                          className="text-slate-600 hover:text-slate-900 font-medium"
+                        >
+                          Ứng viên
+                        </Link>
+                        <Link
+                          href={`/escrow/${proj.id}`}
+                          className="text-emerald-700 hover:text-emerald-800 font-medium"
+                        >
+                          Escrow
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

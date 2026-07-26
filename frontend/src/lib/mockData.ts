@@ -93,7 +93,7 @@ export const MOCK_PROJECTS: Project[] = [
     status: 'IN_PROGRESS',
     maxApplicants: 1,
     createdAt: '2024-11-15',
-    escrowStatus: 'LOCKED',
+    escrowStatus: 'HELD',
     autoAcceptDaysRemaining: 28,
     acceptedStudentId: 'stu-1',
     acceptedStudentName: 'Alex Chen',

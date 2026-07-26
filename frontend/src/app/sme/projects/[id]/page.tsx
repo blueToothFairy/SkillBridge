@@ -295,12 +295,24 @@ export default function SmeProjectDetailPage() {
                   <span className="font-bold text-slate-900 mt-0.5 block">
                     Đã có {applicantCount} ứng viên ứng tuyển
                   </span>
-                  <div className="mt-2">
+                  <div className="mt-2 space-y-1.5">
                     <Link
-                      href={`/sme/matching/proj-2`}
+                      href={`/sme/projects/${project.id}/applicants`}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-brand-primary hover:underline"
                     >
                       Mở bảng đánh giá matching ứng viên <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                    <Link
+                      href={`/escrow/${project.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline"
+                    >
+                      Escrow &amp; ký quỹ <ShieldCheck className="w-3.5 h-3.5" />
+                    </Link>
+                    <Link
+                      href={`/projects/${project.id}/milestones`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:underline"
+                    >
+                      Quản lý milestones <ExternalLink className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 </div>
