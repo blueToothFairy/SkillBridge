@@ -215,6 +215,9 @@ export default function ProjectMilestonesPage() {
                 const isSubmitted = m.status === 'SUBMITTED';
                 const isRevision = m.status === 'REVISION_REQUIRED';
                 const isPending = m.status === 'PENDING';
+                const isInProgress = m.status === 'IN_PROGRESS';
+                const canStudentSubmit =
+                  isPending || isInProgress || isSubmitted || isRevision;
 
                 return (
                   <div key={m.id} className="relative pl-12 bg-white card-crisp p-5 hover:border-slate-300 transition-colors">
@@ -227,6 +230,8 @@ export default function ProjectMilestonesPage() {
                           ? 'bg-amber-500 text-white'
                           : isRevision
                           ? 'bg-rose-500 text-white'
+                          : isInProgress
+                          ? 'bg-blue-600 text-white'
                           : 'bg-slate-200 text-slate-600'
                       }`}
                     >
@@ -262,6 +267,8 @@ export default function ProjectMilestonesPage() {
                             ? 'bg-amber-50 border border-amber-200 text-amber-700'
                             : isRevision
                             ? 'bg-rose-50 border border-rose-200 text-rose-700 animate-pulse'
+                            : isInProgress
+                            ? 'bg-blue-50 border border-blue-200 text-blue-700'
                             : 'bg-slate-50 border border-slate-200 text-slate-600'
                         }`}
                       >
@@ -271,6 +278,8 @@ export default function ProjectMilestonesPage() {
                           ? 'Đang chờ duyệt'
                           : isRevision
                           ? 'Cần sửa đổi'
+                          : isInProgress
+                          ? 'Đang làm'
                           : 'Chưa làm'}
                       </span>
                     </div>
@@ -304,7 +313,7 @@ export default function ProjectMilestonesPage() {
                     )}
 
                     {/* Student Submit Actions */}
-                    {role === 'STUDENT' && (isPending || isSubmitted || isRevision) && project.status === 'IN_PROGRESS' && (
+                    {role === 'STUDENT' && canStudentSubmit && project.status === 'IN_PROGRESS' && (
                       <div className="mt-4 pt-3 border-t border-slate-100">
                         <div className="p-3.5 bg-slate-50/50 border border-slate-200 rounded-lg space-y-2">
                           <label className="text-[11px] font-bold text-slate-700 block">
