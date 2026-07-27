@@ -228,6 +228,33 @@ export async function reviewMilestone(
             status: ProjectStatus.PENDING_ACCEPTANCE,
           },
         });
+
+        // Delete any existing reminders for this project to reset schedule
+        await tx.acceptanceReminder.deleteMany({
+          where: { projectId: milestone.projectId },
+        });
+
+        // Insert fresh reminders
+        const now = new Date();
+        await tx.acceptanceReminder.createMany({
+          data: [
+            {
+              projectId: milestone.projectId,
+              reminderNumber: 1,
+              scheduledAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+            },
+            {
+              projectId: milestone.projectId,
+              reminderNumber: 2,
+              scheduledAt: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+            },
+            {
+              projectId: milestone.projectId,
+              reminderNumber: 3,
+              scheduledAt: new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000),
+            },
+          ],
+        });
       }
 
       return updatedMilestone;

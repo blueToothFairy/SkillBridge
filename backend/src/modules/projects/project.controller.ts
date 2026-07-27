@@ -1,8 +1,10 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../../middlewares/auth';
 import { ProjectStatus } from '@prisma/client';
 import * as projectService from './project.service';
 import { sendSuccess, sendError } from '../../utils/response';
+import { prisma } from '../../config/prisma';
+import { runAcceptanceRemindersJob } from '../../utils/scheduler';
 
 export async function createProject(req: AuthenticatedRequest, res: Response) {
   try {
@@ -187,5 +189,98 @@ export async function reviewProject(req: AuthenticatedRequest, res: Response) {
       return sendError(res, error.message, 400, 'BAD_REQUEST');
     }
     return sendError(res, error.message || 'Failed to review project', 500, 'SERVER_ERROR');
+  }
+}
+
+export async function acceptProject(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+    const role = req.user?.role;
+
+    if (!userId) {
+      return sendError(res, 'User identity unverified', 401, 'UNAUTHORIZED');
+    }
+
+    const updatedProject = await projectService.acceptProject(id, userId, role === 'ADMIN');
+    return sendSuccess(res, updatedProject);
+  } catch (error: any) {
+    if (error.message === 'Project not found') {
+      return sendError(res, error.message, 404, 'NOT_FOUND');
+    }
+    if (error.message === 'Unauthorized to accept this project') {
+      return sendError(res, error.message, 403, 'FORBIDDEN');
+    }
+    if (error.message === 'Project is not in pending acceptance status') {
+      return sendError(res, error.message, 400, 'BAD_REQUEST');
+    }
+    return sendError(res, error.message || 'Failed to accept project', 500, 'SERVER_ERROR');
+  }
+}
+
+export async function requestProjectRevision(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const { feedback } = req.body;
+    const userId = req.user?.userId;
+    const role = req.user?.role;
+
+    if (!userId) {
+      return sendError(res, 'User identity unverified', 401, 'UNAUTHORIZED');
+    }
+
+    if (!feedback || feedback.trim().length < 10) {
+      return sendError(res, 'Feedback must be at least 10 characters long', 400, 'VALIDATION_ERROR');
+    }
+
+    const updatedProject = await projectService.requestProjectRevision(id, userId, role === 'ADMIN', feedback);
+    return sendSuccess(res, updatedProject);
+  } catch (error: any) {
+    if (error.message === 'Project not found') {
+      return sendError(res, error.message, 404, 'NOT_FOUND');
+    }
+    if (error.message === 'Unauthorized to request revision for this project') {
+      return sendError(res, error.message, 403, 'FORBIDDEN');
+    }
+    if (error.message === 'Project is not in pending acceptance status') {
+      return sendError(res, error.message, 400, 'BAD_REQUEST');
+    }
+    return sendError(res, error.message || 'Failed to request project revision', 500, 'SERVER_ERROR');
+  }
+}
+
+export async function triggerCron(req: Request, res: Response) {
+  try {
+    const { projectId, days = 28 } = req.body;
+    const shiftMs = Number(days) * 24 * 60 * 60 * 1000;
+
+    const whereClause: any = { triggeredAt: null };
+    if (projectId) {
+      whereClause.projectId = projectId;
+    }
+
+    const reminders = await prisma.acceptanceReminder.findMany({
+      where: whereClause,
+    });
+
+    for (const r of reminders) {
+      await prisma.acceptanceReminder.update({
+        where: { id: r.id },
+        data: {
+          scheduledAt: new Date(r.scheduledAt.getTime() - shiftMs),
+        },
+      });
+    }
+
+    // Run scheduler job immediately
+    const summary = await runAcceptanceRemindersJob();
+
+    return sendSuccess(res, {
+      message: `Successfully shifted ${reminders.length} reminders back by ${days} days and executed scheduler check.`,
+      remindersShiftedCount: reminders.length,
+      schedulerSummary: summary,
+    });
+  } catch (error: any) {
+    return sendError(res, error.message || 'Failed to trigger scheduler simulation', 500, 'SERVER_ERROR');
   }
 }

@@ -251,3 +251,179 @@ export async function reviewProject(id: string, action: 'APPROVE' | 'REJECT') {
     },
   });
 }
+
+export async function acceptProject(id: string, requesterUserId: string, isAdmin: boolean) {
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      sme: true,
+      milestones: { orderBy: { orderIndex: 'asc' } },
+      applications: {
+        where: { status: 'ACCEPTED' },
+        include: { student: true },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  if (!isAdmin && project.sme.userId !== requesterUserId) {
+    throw new Error('Unauthorized to accept this project');
+  }
+
+  if (project.status !== ProjectStatus.PENDING_ACCEPTANCE) {
+    throw new Error('Project is not in pending acceptance status');
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Update Project Status to COMPLETED, escrowStatus to RELEASED
+    const updatedProject = await tx.project.update({
+      where: { id },
+      data: {
+        status: ProjectStatus.COMPLETED,
+        escrowStatus: 'RELEASED',
+        acceptedAt: new Date(),
+        isAutoAccepted: false,
+      },
+      include: {
+        sme: true,
+        categoryTag: true,
+        milestones: { orderBy: { orderIndex: 'asc' } },
+      },
+    });
+
+    // 2. Mark active scheduled reminders for this project as triggered/processed
+    await tx.acceptanceReminder.updateMany({
+      where: {
+        projectId: id,
+        triggeredAt: null,
+      },
+      data: {
+        triggeredAt: new Date(),
+      },
+    });
+
+    const lastMilestone = project.milestones[project.milestones.length - 1];
+    const finalDeliverableUrl = lastMilestone?.deliverableUrl || null;
+
+    // 3. For each accepted student application, create VerifiedPortfolioEntry & Certificate stub
+    for (const app of project.applications) {
+      // Create VerifiedPortfolioEntry if not already exists
+      const existingPortfolio = await tx.verifiedPortfolioEntry.findUnique({
+        where: {
+          studentId_projectId: {
+            studentId: app.studentId,
+            projectId: id,
+          },
+        },
+      });
+
+      if (!existingPortfolio) {
+        await tx.verifiedPortfolioEntry.create({
+          data: {
+            studentId: app.studentId,
+            projectId: id,
+            projectTitle: project.title,
+            smeName: project.sme.companyName,
+            studentRole: 'Contributor',
+            durationWeeks: project.durationWeeks,
+            skillsApplied: project.requiredSkillTags || [],
+            deliverableUrl: finalDeliverableUrl,
+            isVerified: true,
+          },
+        });
+      }
+
+      // Create stub Certificate
+      const existingCert = await tx.certificate.findUnique({
+        where: {
+          studentId_projectId: {
+            studentId: app.studentId,
+            projectId: id,
+          },
+        },
+      });
+
+      if (!existingCert) {
+        await tx.certificate.create({
+          data: {
+            studentId: app.studentId,
+            projectId: id,
+            studentName: app.student.fullName,
+            projectTitle: project.title,
+            smeName: project.sme.companyName,
+            verificationCode: `SB-CERT-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          },
+        });
+      }
+    }
+
+    return updatedProject;
+  });
+}
+
+export async function requestProjectRevision(id: string, requesterUserId: string, isAdmin: boolean, feedback: string) {
+  if (!feedback || feedback.trim().length < 10) {
+    throw new Error('Feedback must be at least 10 characters long');
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      sme: true,
+      milestones: { orderBy: { orderIndex: 'asc' } },
+    },
+  });
+
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  if (!isAdmin && project.sme.userId !== requesterUserId) {
+    throw new Error('Unauthorized to request revision for this project');
+  }
+
+  if (project.status !== ProjectStatus.PENDING_ACCEPTANCE) {
+    throw new Error('Project is not in pending acceptance status');
+  }
+
+  const lastMilestone = project.milestones[project.milestones.length - 1];
+  if (!lastMilestone) {
+    throw new Error('No milestones found for this project');
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Update Project Status to IN_PROGRESS
+    const updatedProject = await tx.project.update({
+      where: { id },
+      data: {
+        status: ProjectStatus.IN_PROGRESS,
+      },
+      include: {
+        sme: true,
+        categoryTag: true,
+        milestones: { orderBy: { orderIndex: 'asc' } },
+      },
+    });
+
+    // 2. Update the last milestone to REVISION_REQUIRED
+    await tx.milestone.update({
+      where: { id: lastMilestone.id },
+      data: {
+        status: 'REVISION_REQUIRED',
+        revisionFeedback: feedback.trim(),
+      },
+    });
+
+    // 3. Delete scheduled reminders for this project
+    await tx.acceptanceReminder.deleteMany({
+      where: {
+        projectId: id,
+      },
+    });
+
+    return updatedProject;
+  });
+}

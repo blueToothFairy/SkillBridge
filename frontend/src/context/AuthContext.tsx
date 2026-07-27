@@ -1,6 +1,7 @@
 'use client';
-
+ 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { User, UserRole, RegisterPayload } from '../types';
 import { registerApi, loginApi, getMeApi, updateProfileApi } from '../lib/api/auth';
 
@@ -20,6 +21,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -87,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (typeof window !== 'undefined') {
       localStorage.removeItem('sb_auth_token');
     }
+    router.push('/login');
   };
 
   const activeRole: UserRole = user ? user.role : fallbackRole;
