@@ -130,3 +130,42 @@ export async function reviewProjectApi(
 
   return data.data;
 }
+
+export async function acceptProjectApi(token: string, id: string): Promise<ApiProject> {
+  const res = await fetch(`${API_BASE_URL}/api/projects/${id}/accept`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error?.message || 'Failed to accept project');
+  }
+
+  return data.data;
+}
+
+export async function requestProjectRevisionApi(
+  token: string,
+  id: string,
+  feedback: string
+): Promise<ApiProject> {
+  const res = await fetch(`${API_BASE_URL}/api/projects/${id}/revision`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ feedback }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error?.message || 'Failed to request project revision');
+  }
+
+  return data.data;
+}

@@ -1,10 +1,10 @@
 'use client';
-
+ 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { fetchProjectByIdApi } from '@/lib/api/projects';
+import { fetchProjectByIdApi, acceptProjectApi, requestProjectRevisionApi } from '@/lib/api/projects';
 import {
   fetchProjectMilestonesApi,
   submitMilestoneDeliverableApi,
@@ -43,6 +43,11 @@ export default function ProjectMilestonesPage() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [revisionFeedback, setRevisionFeedback] = useState<string>('');
   const [showRevisionModal, setShowRevisionModal] = useState<string | null>(null);
+
+  // Project Acceptance States
+  const [isAcceptingProject, setIsAcceptingProject] = useState<boolean>(false);
+  const [showProjectRevisionModal, setShowProjectRevisionModal] = useState<boolean>(false);
+  const [projectRevisionFeedback, setProjectRevisionFeedback] = useState<string>('');
 
   const loadData = useCallback(async () => {
     if (!projectId || !token) return;
@@ -150,6 +155,43 @@ export default function ProjectMilestonesPage() {
     }
   };
 
+  const handleAcceptProject = async () => {
+    if (!token || !projectId) return;
+    if (!confirm('Bạn có chắc chắn muốn nghiệm thu toàn bộ dự án này? Ngân sách ký quỹ còn lại sẽ được chuyển toàn bộ cho sinh viên và dự án sẽ kết thúc.')) return;
+
+    try {
+      setIsAcceptingProject(true);
+      await acceptProjectApi(token, projectId);
+      alert('Nghiệm thu dự án thành công!');
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Nghiệm thu dự án thất bại');
+    } finally {
+      setIsAcceptingProject(false);
+    }
+  };
+
+  const handleRequestProjectRevision = async () => {
+    if (!token || !projectId || !projectRevisionFeedback.trim()) return;
+    if (projectRevisionFeedback.trim().length < 10) {
+      alert('Ý kiến nhận xét phải tối thiểu 10 ký tự.');
+      return;
+    }
+
+    try {
+      setIsAcceptingProject(true);
+      await requestProjectRevisionApi(token, projectId, projectRevisionFeedback.trim());
+      alert('Gửi yêu cầu sửa đổi dự án thành công!');
+      setShowProjectRevisionModal(false);
+      setProjectRevisionFeedback('');
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Yêu cầu sửa đổi dự án thất bại');
+    } finally {
+      setIsAcceptingProject(false);
+    }
+  };
+
   const formatVnd = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
@@ -197,6 +239,57 @@ export default function ProjectMilestonesPage() {
 
       {/* Progress bar */}
       <MilestoneProgressBar milestones={milestones} />
+
+      {/* Project Acceptance Panel */}
+      {project.status === 'PENDING_ACCEPTANCE' && (
+        <div className="p-5 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
+          <div className="flex items-start gap-3">
+            <Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                {role === 'SME' ? 'Dự án đang chờ bạn nghiệm thu' : 'Dự án đang chờ SME nghiệm thu'}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed mt-0.5">
+                {role === 'SME'
+                  ? 'Tất cả các cột mốc đã được phê duyệt. Vui lòng kiểm tra kỹ toàn bộ sản phẩm bàn giao của sinh viên trước khi nghiệm thu dự án. Hệ thống sẽ tự động nghiệm thu sau tối đa 28 ngày kể từ ngày nộp nếu bạn không phản hồi.'
+                  : 'Tất cả cột mốc đã được hoàn thành xuất sắc và đang chờ doanh nghiệp đánh giá nghiệm thu tổng thể. Hệ thống sẽ tự động nghiệm thu sau tối đa 28 ngày nếu doanh nghiệp không phản hồi.'}
+              </p>
+            </div>
+          </div>
+          {role === 'SME' && (
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={handleAcceptProject}
+                disabled={isAcceptingProject}
+                className="btn-primary text-xs py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg flex items-center gap-1.5 shadow-sm"
+              >
+                {isAcceptingProject ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                Nghiệm thu dự án
+              </button>
+              <button
+                onClick={() => setShowProjectRevisionModal(true)}
+                disabled={isAcceptingProject}
+                className="btn-secondary text-xs py-2 px-4 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg font-semibold"
+              >
+                Yêu cầu sửa đổi dự án
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Project Completed Success Banner */}
+      {project.status === 'COMPLETED' && (
+        <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Dự án đã hoàn thành xuất sắc!</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Mọi sản phẩm bàn giao đã được nghiệm thu thành công. Cảm ơn sự hợp tác của các bạn!
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -452,6 +545,43 @@ export default function ProjectMilestonesPage() {
               <button
                 onClick={() => handleRequestRevision(showRevisionModal)}
                 disabled={!revisionFeedback.trim() || submittingId === showRevisionModal}
+                className="btn-primary bg-rose-600 hover:bg-rose-700 py-1.5 px-3 rounded-lg text-white"
+              >
+                Gửi yêu cầu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Project Revision Modal */}
+      {showProjectRevisionModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-slate-200 max-w-md w-full p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-bold text-slate-900">Yêu cầu chỉnh sửa dự án</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Vui lòng viết nhận xét chi tiết về những phần sinh viên cần sửa chữa hoặc hoàn thiện thêm cho sản phẩm bàn giao của toàn bộ dự án.
+            </p>
+            <textarea
+              rows={4}
+              value={projectRevisionFeedback}
+              onChange={(e) => setProjectRevisionFeedback(e.target.value)}
+              placeholder="Ví dụ: Vui lòng sửa lại lỗi responsive trên trang Admin Dashboard và cập nhật lại file hướng dẫn sử dụng..."
+              className="w-full text-xs p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
+            />
+            <div className="flex justify-end gap-2 text-xs font-semibold">
+              <button
+                onClick={() => {
+                  setShowProjectRevisionModal(false);
+                  setProjectRevisionFeedback('');
+                }}
+                className="btn-secondary py-1.5 px-3 rounded-lg"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleRequestProjectRevision}
+                disabled={projectRevisionFeedback.trim().length < 10 || isAcceptingProject}
                 className="btn-primary bg-rose-600 hover:bg-rose-700 py-1.5 px-3 rounded-lg text-white"
               >
                 Gửi yêu cầu

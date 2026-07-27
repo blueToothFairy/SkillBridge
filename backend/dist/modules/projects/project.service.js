@@ -6,11 +6,13 @@ exports.getProjectById = getProjectById;
 exports.updateProject = updateProject;
 exports.getPendingProjects = getPendingProjects;
 exports.reviewProject = reviewProject;
+exports.acceptProject = acceptProject;
+exports.requestProjectRevision = requestProjectRevision;
 const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const prisma_1 = require("../../config/prisma");
 async function createProject(userId, input) {
     // Find SME Profile for user
-    const smeProfile = await prisma.smeProfile.findUnique({
+    const smeProfile = await prisma_1.prisma.smeProfile.findUnique({
         where: { userId },
     });
     if (!smeProfile) {
@@ -18,8 +20,8 @@ async function createProject(userId, input) {
     }
     const deadlineDate = input.deadline
         ? new Date(input.deadline)
-        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    return await prisma.project.create({
+        : new Date(Date.now() + Number(input.durationWeeks) * 7 * 24 * 60 * 60 * 1000);
+    return await prisma_1.prisma.project.create({
         data: {
             smeId: smeProfile.id,
             title: input.title.trim(),
@@ -28,13 +30,24 @@ async function createProject(userId, input) {
             requiredSkillTags: input.requiredSkillTags || [],
             budget: input.budget,
             durationWeeks: input.durationWeeks,
-            maxApplicants: input.maxApplicants || 5,
+            maxApplicants: input.maxApplicants || 4,
             deadline: deadlineDate,
             status: client_1.ProjectStatus.UNDER_REVIEW,
+            milestones: input.milestones && input.milestones.length > 0 ? {
+                create: input.milestones.map((m, idx) => ({
+                    title: m.title.trim(),
+                    description: m.description.trim(),
+                    deadline: new Date(m.deadline),
+                    orderIndex: idx + 1,
+                    status: 'PENDING',
+                    amountVnd: m.amountVnd,
+                }))
+            } : undefined,
         },
         include: {
             sme: true,
             categoryTag: true,
+            milestones: true,
         },
     });
 }
@@ -43,11 +56,17 @@ async function getProjects(params) {
     const limit = params.limit || 10;
     const skip = (page - 1) * limit;
     const where = {};
+    if (params.smeUserId) {
+        where.sme = { userId: params.smeUserId };
+    }
+    else if (params.smeId) {
+        where.smeId = params.smeId;
+    }
     if (params.status) {
         where.status = params.status;
     }
-    else {
-        // Default to OPEN projects for public browse unless specified
+    else if (!params.smeUserId && !params.smeId) {
+        // Default to OPEN projects for public browse unless SME "mine" filter
         where.status = client_1.ProjectStatus.OPEN;
     }
     if (params.categoryTagId) {
@@ -60,8 +79,8 @@ async function getProjects(params) {
         ];
     }
     const [total, projects] = await Promise.all([
-        prisma.project.count({ where }),
-        prisma.project.findMany({
+        prisma_1.prisma.project.count({ where }),
+        prisma_1.prisma.project.findMany({
             where,
             skip,
             take: limit,
@@ -90,7 +109,7 @@ async function getProjects(params) {
     };
 }
 async function getProjectById(id) {
-    return await prisma.project.findUnique({
+    return await prisma_1.prisma.project.findUnique({
         where: { id },
         include: {
             sme: {
@@ -107,11 +126,21 @@ async function getProjectById(id) {
                 },
             },
             categoryTag: true,
+            milestones: {
+                orderBy: {
+                    orderIndex: 'asc',
+                },
+            },
+            _count: {
+                select: {
+                    applications: true,
+                },
+            },
         },
     });
 }
 async function updateProject(id, userId, data) {
-    const project = await prisma.project.findUnique({
+    const project = await prisma_1.prisma.project.findUnique({
         where: { id },
         include: { sme: true },
     });
@@ -145,7 +174,7 @@ async function updateProject(id, userId, data) {
     else if (data.status) {
         updateData.status = data.status;
     }
-    return await prisma.project.update({
+    return await prisma_1.prisma.project.update({
         where: { id },
         data: updateData,
         include: {
@@ -155,7 +184,7 @@ async function updateProject(id, userId, data) {
     });
 }
 async function getPendingProjects() {
-    return await prisma.project.findMany({
+    return await prisma_1.prisma.project.findMany({
         where: { status: client_1.ProjectStatus.UNDER_REVIEW },
         orderBy: { createdAt: 'desc' },
         include: {
@@ -172,7 +201,7 @@ async function getPendingProjects() {
     });
 }
 async function reviewProject(id, action) {
-    const project = await prisma.project.findUnique({
+    const project = await prisma_1.prisma.project.findUnique({
         where: { id },
     });
     if (!project) {
@@ -182,12 +211,166 @@ async function reviewProject(id, action) {
         throw new Error('Project is not under review');
     }
     const status = action === 'APPROVE' ? client_1.ProjectStatus.OPEN : client_1.ProjectStatus.DRAFT;
-    return await prisma.project.update({
+    return await prisma_1.prisma.project.update({
         where: { id },
         data: { status },
         include: {
             sme: true,
             categoryTag: true,
         },
+    });
+}
+async function acceptProject(id, requesterUserId, isAdmin) {
+    const project = await prisma_1.prisma.project.findUnique({
+        where: { id },
+        include: {
+            sme: true,
+            milestones: { orderBy: { orderIndex: 'asc' } },
+            applications: {
+                where: { status: 'ACCEPTED' },
+                include: { student: true },
+            },
+        },
+    });
+    if (!project) {
+        throw new Error('Project not found');
+    }
+    if (!isAdmin && project.sme.userId !== requesterUserId) {
+        throw new Error('Unauthorized to accept this project');
+    }
+    if (project.status !== client_1.ProjectStatus.PENDING_ACCEPTANCE) {
+        throw new Error('Project is not in pending acceptance status');
+    }
+    return await prisma_1.prisma.$transaction(async (tx) => {
+        // 1. Update Project Status to COMPLETED, escrowStatus to RELEASED
+        const updatedProject = await tx.project.update({
+            where: { id },
+            data: {
+                status: client_1.ProjectStatus.COMPLETED,
+                escrowStatus: 'RELEASED',
+                acceptedAt: new Date(),
+                isAutoAccepted: false,
+            },
+            include: {
+                sme: true,
+                categoryTag: true,
+                milestones: { orderBy: { orderIndex: 'asc' } },
+            },
+        });
+        // 2. Mark active scheduled reminders for this project as triggered/processed
+        await tx.acceptanceReminder.updateMany({
+            where: {
+                projectId: id,
+                triggeredAt: null,
+            },
+            data: {
+                triggeredAt: new Date(),
+            },
+        });
+        const lastMilestone = project.milestones[project.milestones.length - 1];
+        const finalDeliverableUrl = lastMilestone?.deliverableUrl || null;
+        // 3. For each accepted student application, create VerifiedPortfolioEntry & Certificate stub
+        for (const app of project.applications) {
+            // Create VerifiedPortfolioEntry if not already exists
+            const existingPortfolio = await tx.verifiedPortfolioEntry.findUnique({
+                where: {
+                    studentId_projectId: {
+                        studentId: app.studentId,
+                        projectId: id,
+                    },
+                },
+            });
+            if (!existingPortfolio) {
+                await tx.verifiedPortfolioEntry.create({
+                    data: {
+                        studentId: app.studentId,
+                        projectId: id,
+                        projectTitle: project.title,
+                        smeName: project.sme.companyName,
+                        studentRole: 'Contributor',
+                        durationWeeks: project.durationWeeks,
+                        skillsApplied: project.requiredSkillTags || [],
+                        deliverableUrl: finalDeliverableUrl,
+                        isVerified: true,
+                    },
+                });
+            }
+            // Create stub Certificate
+            const existingCert = await tx.certificate.findUnique({
+                where: {
+                    studentId_projectId: {
+                        studentId: app.studentId,
+                        projectId: id,
+                    },
+                },
+            });
+            if (!existingCert) {
+                await tx.certificate.create({
+                    data: {
+                        studentId: app.studentId,
+                        projectId: id,
+                        studentName: app.student.fullName,
+                        projectTitle: project.title,
+                        smeName: project.sme.companyName,
+                        verificationCode: `SB-CERT-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+                    },
+                });
+            }
+        }
+        return updatedProject;
+    });
+}
+async function requestProjectRevision(id, requesterUserId, isAdmin, feedback) {
+    if (!feedback || feedback.trim().length < 10) {
+        throw new Error('Feedback must be at least 10 characters long');
+    }
+    const project = await prisma_1.prisma.project.findUnique({
+        where: { id },
+        include: {
+            sme: true,
+            milestones: { orderBy: { orderIndex: 'asc' } },
+        },
+    });
+    if (!project) {
+        throw new Error('Project not found');
+    }
+    if (!isAdmin && project.sme.userId !== requesterUserId) {
+        throw new Error('Unauthorized to request revision for this project');
+    }
+    if (project.status !== client_1.ProjectStatus.PENDING_ACCEPTANCE) {
+        throw new Error('Project is not in pending acceptance status');
+    }
+    const lastMilestone = project.milestones[project.milestones.length - 1];
+    if (!lastMilestone) {
+        throw new Error('No milestones found for this project');
+    }
+    return await prisma_1.prisma.$transaction(async (tx) => {
+        // 1. Update Project Status to IN_PROGRESS
+        const updatedProject = await tx.project.update({
+            where: { id },
+            data: {
+                status: client_1.ProjectStatus.IN_PROGRESS,
+            },
+            include: {
+                sme: true,
+                categoryTag: true,
+                milestones: { orderBy: { orderIndex: 'asc' } },
+            },
+        });
+        // 2. Update the last milestone to REVISION_REQUIRED
+        await tx.milestone.update({
+            where: { id: lastMilestone.id },
+            data: {
+                status: 'REVISION_REQUIRED',
+                revisionFeedback: feedback.trim(),
+            },
+        });
+        // 3. Delete scheduled reminders for this project
+        await tx.acceptanceReminder.deleteMany({
+            where: {
+                projectId: id,
+            },
+        });
+        return updatedProject;
     });
 }
