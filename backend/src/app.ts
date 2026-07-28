@@ -9,6 +9,7 @@ import milestoneRoutes from './modules/milestones/milestone.routes';
 import applicationRoutes from './modules/applications/application.routes';
 import escrowRoutes from './modules/escrow/escrow.routes';
 import certificateRoutes from './modules/certificates/certificate.routes';
+import portfolioRoutes from './modules/portfolio/portfolio.routes';
 import { sendError } from './utils/response';
 
 const app: Application = express();
@@ -27,6 +28,7 @@ app.use('/api/milestones', milestoneRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/escrow', escrowRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/portfolio', portfolioRoutes);
 
 // Fallback 404 Route
 app.use((_req: Request, res: Response) => {

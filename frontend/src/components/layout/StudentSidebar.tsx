@@ -13,16 +13,21 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+import { useAuth } from '@/context/AuthContext';
+
 export const StudentSidebar: React.FC = () => {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const studentId = user?.profile?.id || 'stu-1';
 
   const navItems = [
     { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
     { label: 'Browse Projects', href: '/student/browse', icon: Search },
     { label: 'My Applications', href: '/student/applications', icon: FileCheck },
     { label: 'Project Workspaces', href: '/workspace/proj-1', icon: FolderGit2 },
-    { label: 'Verified Portfolio', href: '/student/profile/stu-1', icon: UserCheck },
-    { label: 'Digital Certificates', href: '/certificates/cert-1', icon: Award },
+    { label: 'Verified Portfolio', href: `/student/profile/${studentId}`, icon: UserCheck },
+    { label: 'Digital Certificates', href: '/certificates', icon: Award },
   ];
 
   return (
@@ -36,7 +41,7 @@ export const StudentSidebar: React.FC = () => {
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Year 4 · UCL / HCM City
+            {user?.profile ? `Year ${user.profile.year} · ${user.profile.university}` : 'Year 4 · UCL / HCM City'}
           </p>
         </div>
 
