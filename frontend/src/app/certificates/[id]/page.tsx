@@ -1,19 +1,21 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   Award,
   ShieldCheck,
   Share2,
-  Printer,
+  Download,
   ArrowLeft,
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Copy,
 } from 'lucide-react';
 import { fetchCertificateByCodeApi } from '@/lib/api/certificates';
+import { CertificateQrCode } from '@/components/certificates/CertificateQrCode';
 import { DigitalCertificate } from '@/types';
 
 export default function DigitalCertificatePage() {
@@ -24,6 +26,7 @@ export default function DigitalCertificatePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -42,16 +45,57 @@ export default function DigitalCertificatePage() {
     load();
   }, [code]);
 
-  const handleShare = async () => {
-    if (!cert || typeof window === 'undefined') return;
+  const verificationUrl = useMemo(() => {
+    if (!cert || typeof window === 'undefined') return '';
+    return `${window.location.origin}/certificates/${cert.verificationCode}`;
+  }, [cert]);
+
+  const handleCopyLink = async () => {
+    if (!verificationUrl) return;
     try {
-      const url = `${window.location.origin}/certificates/${cert.verificationCode}`;
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(verificationUrl);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setShareMessage('Verification link copied to clipboard.');
+      setTimeout(() => {
+        setCopied(false);
+        setShareMessage(null);
+      }, 2500);
     } catch {
       setError('Không thể copy link xác thực.');
     }
+  };
+
+  const handleShare = async () => {
+    if (!cert || !verificationUrl) return;
+
+    const sharePayload = {
+      title: `SkillBridge Certificate — ${cert.projectTitle}`,
+      text: `${cert.studentName} completed "${cert.projectTitle}" on SkillBridge. Verify: ${cert.verificationCode}`,
+      url: verificationUrl,
+    };
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share(sharePayload);
+        setShareMessage('Certificate shared successfully.');
+      } else {
+        await navigator.clipboard.writeText(`${sharePayload.text}\n${verificationUrl}`);
+        setCopied(true);
+        setShareMessage('Share text copied (native share not supported on this device).');
+      }
+      setTimeout(() => {
+        setCopied(false);
+        setShareMessage(null);
+      }, 2500);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        setError('Không thể chia sẻ chứng nhận.');
+      }
+    }
+  };
+
+  const handleExportPdf = () => {
+    window.print();
   };
 
   if (loading) {
@@ -77,30 +121,43 @@ export default function DigitalCertificatePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 py-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="no-print flex items-center justify-between gap-4 flex-wrap">
         <Link
           href="/certificates"
           className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Certificates
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => window.print()}
+            onClick={handleExportPdf}
             className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
           >
-            <Printer className="h-3.5 w-3.5" /> Print / Save PDF
+            <Download className="h-3.5 w-3.5" /> Export PDF
+          </button>
+          <button
+            onClick={handleCopyLink}
+            className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+          >
+            <Copy className="h-3.5 w-3.5" /> {copied ? 'Copied!' : 'Copy Link'}
           </button>
           <button
             onClick={handleShare}
             className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
           >
-            <Share2 className="h-3.5 w-3.5" /> {copied ? 'Copied!' : 'Share Verification Link'}
+            <Share2 className="h-3.5 w-3.5" /> Share Certificate
           </button>
         </div>
       </div>
 
-      <div className="card-crisp p-8 bg-white border border-slate-200 shadow-lg space-y-8 relative overflow-hidden print:shadow-none print:border-slate-300">
+      {shareMessage && (
+        <div className="no-print card-crisp p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4" />
+          {shareMessage}
+        </div>
+      )}
+
+      <div className="certificate-print-area card-crisp p-8 bg-white border border-slate-200 shadow-lg space-y-8 relative overflow-hidden">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-md text-xs font-bold tracking-wider uppercase">
             <Award className="h-4 w-4 text-emerald-400" /> SkillBridge Official Certificate
@@ -145,10 +202,16 @@ export default function DigitalCertificatePage() {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <div className="text-left">
+        <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-500">
+          <div className="text-left space-y-1">
             <p className="font-bold text-slate-900">SkillBridge Verification System</p>
             <p className="text-[11px] text-slate-500">Issued on {cert.issueDate}</p>
+            <p className="text-[11px] text-slate-500 break-all">{verificationUrl}</p>
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
+            {verificationUrl && <CertificateQrCode value={verificationUrl} size={112} />}
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Scan to verify</p>
           </div>
 
           <div className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200 text-[11px] text-emerald-800 font-semibold">
@@ -157,7 +220,7 @@ export default function DigitalCertificatePage() {
         </div>
       </div>
 
-      <div className="card-crisp p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+      <div className="no-print card-crisp p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4" />
         Public verification endpoint: <code>/api/certificates/verify/{cert.verificationCode}</code>
       </div>
