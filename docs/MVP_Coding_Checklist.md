@@ -2,7 +2,7 @@
 
 > Tài liệu theo dõi tiến độ code theo [MVP_Plan.md](../../doc/MVP_Plan.md).  
 > UI nguồn sự thật: [`Prototype_UI_Spec.md`](./Prototype_UI_Spec.md)  
-> Cập nhật lần cuối: **2026-07-27** (nhánh `ha`).
+> Cập nhật lần cuối: **2026-07-28** (đã sync `ha` với `main` và chốt thêm gap Day 28).
 
 **Legend:** `[x]` hoàn thành đạt · `[~]` hoàn thành nhưng còn note · `[ ]` chưa làm
 
@@ -86,15 +86,17 @@
 
 ---
 
-## 27/07/2026 — Thịnh *(chưa làm trên nhánh `ha`)*
+## 27/07/2026 — Thịnh
 
 ### Project Acceptance & Auto-Reminder Flow
 
-- [ ] `POST /api/projects/:id/accept`
-- [ ] `POST /api/projects/:id/revise`
-- [ ] Logic `acceptance_reminders` + cron/utility auto-accept
-- [ ] Wire UI Decision card Hình 5 (Accept + Request Revision)
-- [~] Schema stub `acceptance_reminders` đã có trên `ha`
+- [x] `PATCH /api/projects/:id/accept`
+- [x] `PATCH /api/projects/:id/revision`
+- [x] Logic `acceptance_reminders` + scheduler auto-accept
+  - **Note:** Có `setInterval` scheduler trong `backend/src/server.ts` và endpoint test `POST /api/projects/test/trigger-cron`.
+- [x] Wire UI nghiệm thu / yêu cầu sửa đổi
+  - **Note:** UI được gộp vào `/projects/:id/milestones` thay vì có route riêng `/projects/:id/accept`.
+- [x] Schema + lifecycle `acceptance_reminders`
 
 ---
 
@@ -102,10 +104,12 @@
 
 ### Verified Portfolio & Student Profile
 
-- [ ] API tạo `verified_portfolio_entries` sau nghiệm thu
-- [ ] `GET /api/portfolio/student/:id`
-- [ ] UI Profile (Hình 2) + Verified Portfolio (Hình 6)
-- [~] Schema stub đã có · Spec: `Prototype_UI_Spec.md` §3 & §7
+- [x] Tự động tạo `verified_portfolio_entries` sau nghiệm thu / auto-accept
+- [x] `GET /api/portfolio/student/:id`
+- [x] UI Student Profile + Verified Portfolio
+  - **Note:** Route hiện là `/student/profile/[id]`; đã fetch API thật và hiển thị portfolio entries + link certificate.
+- [x] UI Student Profile + Verified Portfolio khớp prototype Hình 2 & 6
+  - **Note:** Đã có tabs Overview/Portfolio/Completed/Experience, skill tiers Expert/Proficient/Familiar, stat cards, filters, portfolio cards với Share/Certificate; Experience tab giữ placeholder V1.1.
 
 ---
 
@@ -113,11 +117,17 @@
 
 ### Certificate Generator & Demo Seed Data
 
-- [ ] `POST /api/certificates` + verification code
-- [ ] `GET /api/certificates/verify/:code`
-- [ ] UI `/certificates/:code` + nút Certificate (Hình 6)
-- [~] Seed demo cơ bản đã có — chưa đủ 5+ projects / 10+ students / 3+ SME
-- [~] Schema stub `certificates` đã có
+- [x] Sinh certificate + verification code
+  - **Note:** Giữ auto-create sau nghiệm thu/auto-accept và bổ sung thêm `POST /api/certificates` cho SME/Admin nếu cần issue thủ công.
+- [x] Public verify certificate API
+  - **Note:** Hỗ trợ đúng path plan `GET /api/certificates/verify/:code` và vẫn giữ alias `GET /api/certificates/:code` để không gãy link cũ.
+- [x] UI certificate list + link certificate
+  - **Note:** `/certificates` và `/certificates/[id]` đều dùng API thật theo verification code; bỏ phụ thuộc `MOCK_CERTIFICATE`.
+- [x] Export PDF / Share
+  - **Note:** Certificate detail có QR verify, Export PDF qua print stylesheet, copy link, và native Web Share API (fallback clipboard).
+- [x] Seed demo phong phú
+  - **Note:** `prisma/seed.ts` hiện tạo 1 admin, 3 SME, 10 students, 5 projects cùng applications + milestones theo hướng idempotent để demo dễ hơn.
+- [x] Schema + certificates list API đã có
 
 ---
 
@@ -139,7 +149,7 @@
 | Schema stubs Day 28 | **Tích cực** | Portfolio / certificate / reminders |
 | Prototype UI Spec | **Chung** | Dùng cho mọi UI task |
 
-**Khuyến nghị:** merge `ha` → `main` sớm trước khi Thịnh code Acceptance.
+**Đã merge phần nền của Hà; hiện cần đồng bộ tiếp các gap còn lại của Day 28 trước khi sang 29/7.**
 
 ---
 
@@ -149,5 +159,15 @@
 | :---- | :---- |
 | `admin@skillbridge.com` | ADMIN |
 | `techcorp@sme.com` | SME |
+| `folio@sme.com` | SME |
+| `growth@sme.com` | SME |
 | `an.nguyen@student.edu.vn` | STUDENT |
 | `binh.tran@student.edu.vn` | STUDENT |
+| `chi.le@student.edu.vn` | STUDENT |
+| `duy.vo@student.edu.vn` | STUDENT |
+| `ha.pham@student.edu.vn` | STUDENT |
+| `khanh.do@student.edu.vn` | STUDENT |
+| `linh.ngo@student.edu.vn` | STUDENT |
+| `minh.bui@student.edu.vn` | STUDENT |
+| `nhi.truong@student.edu.vn` | STUDENT |
+| `phuc.nguyen@student.edu.vn` | STUDENT |

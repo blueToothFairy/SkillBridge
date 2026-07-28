@@ -121,6 +121,56 @@
   padding: 0.2rem 0.5rem;
 }
 
+.tag-skill-expert {
+  background-color: #eff4ff;
+  color: #2563eb;
+  border: 1px solid #84adff;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+}
+
+.tag-skill-proficient {
+  background-color: #f9fafb;
+  color: #344054;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.625rem;
+}
+
+.tag-skill-familiar {
+  background-color: #fcfcfd;
+  color: #667085;
+  border: 1px solid #eaecf0;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.625rem;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .certificate-print-area {
+    box-shadow: none !important;
+    border: 1px solid #d0d5dd !important;
+    page-break-inside: avoid;
+  }
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;

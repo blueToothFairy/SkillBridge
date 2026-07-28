@@ -1,8 +1,98 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { prisma } from '../../config/prisma';
 import { sendSuccess, sendError } from '../../utils/response';
+import { AuthenticatedRequest } from '../../middlewares/auth';
 
-export async function getCertificateByCode(req: Request, res: Response) {
+function mapCertificate(cert: any) {
+  return {
+    id: cert.id,
+    certificateNumber: cert.verificationCode,
+    studentName: cert.studentName,
+    university: cert.student?.university || '',
+    projectTitle: cert.projectTitle,
+    smeCompany: cert.smeName,
+    issueDate: cert.issuedAt.toISOString().split('T')[0],
+    skillsVerified: cert.project?.requiredSkillTags || [],
+    verificationCode: cert.verificationCode,
+  };
+}
+
+function buildVerificationCode() {
+  return `SB-CERT-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+export async function issueCertificate(req: AuthenticatedRequest, res: Response) {
+  try {
+    const requesterId = req.user?.userId;
+    const requesterRole = req.user?.role;
+    const { studentId, projectId } = req.body;
+
+    if (!requesterId || !requesterRole) {
+      return sendError(res, 'User identity unverified', 401, 'UNAUTHORIZED');
+    }
+    if (!studentId || !projectId) {
+      return sendError(res, 'studentId and projectId are required', 400, 'VALIDATION_ERROR');
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        sme: true,
+      },
+    });
+
+    if (!project) {
+      return sendError(res, 'Project not found', 404, 'NOT_FOUND');
+    }
+
+    if (requesterRole !== 'ADMIN' && project.sme.userId !== requesterId) {
+      return sendError(res, 'Unauthorized to issue certificate for this project', 403, 'FORBIDDEN');
+    }
+
+    const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
+    if (!student) {
+      return sendError(res, 'Student profile not found', 404, 'NOT_FOUND');
+    }
+
+    const existing = await prisma.certificate.findUnique({
+      where: {
+        studentId_projectId: {
+          studentId,
+          projectId,
+        },
+      },
+      include: {
+        student: { select: { university: true } },
+        project: { select: { requiredSkillTags: true } },
+      },
+    });
+
+    if (existing) {
+      return sendSuccess(res, mapCertificate(existing));
+    }
+
+    const created = await prisma.certificate.create({
+      data: {
+        studentId,
+        projectId,
+        studentName: student.fullName,
+        projectTitle: project.title,
+        smeName: project.sme.companyName,
+        verificationCode: buildVerificationCode(),
+      },
+      include: {
+        student: { select: { university: true } },
+        project: { select: { requiredSkillTags: true } },
+      },
+    });
+
+    return sendSuccess(res, mapCertificate(created), 201);
+  } catch (error: any) {
+    return sendError(res, error.message || 'Failed to issue certificate', 500, 'SERVER_ERROR');
+  }
+}
+
+export async function getCertificateByCode(req: AuthenticatedRequest, res: Response) {
   try {
     const { code } = req.params;
 
@@ -30,26 +120,13 @@ export async function getCertificateByCode(req: Request, res: Response) {
       return sendError(res, 'Certificate not found', 404, 'NOT_FOUND');
     }
 
-    // Map database fields to the DigitalCertificate shape expected by frontend
-    const responseData = {
-      id: certificate.id,
-      certificateNumber: certificate.verificationCode,
-      studentName: certificate.studentName,
-      university: certificate.student.university,
-      projectTitle: certificate.projectTitle,
-      smeCompany: certificate.smeName,
-      issueDate: certificate.issuedAt.toISOString().split('T')[0],
-      skillsVerified: certificate.project.requiredSkillTags || [],
-      verificationCode: certificate.verificationCode,
-    };
-
-    return sendSuccess(res, responseData);
+    return sendSuccess(res, mapCertificate(certificate));
   } catch (error: any) {
     return sendError(res, error.message || 'Failed to fetch certificate', 500, 'SERVER_ERROR');
   }
 }
 
-export async function getStudentCertificates(req: Request, res: Response) {
+export async function getStudentCertificates(req: AuthenticatedRequest, res: Response) {
   try {
     const { studentId } = req.params;
 
@@ -78,19 +155,7 @@ export async function getStudentCertificates(req: Request, res: Response) {
       orderBy: { issuedAt: 'desc' },
     });
 
-    const mappedCertificates = certificates.map((cert) => ({
-      id: cert.id,
-      certificateNumber: cert.verificationCode,
-      studentName: cert.studentName,
-      university: cert.student.university,
-      projectTitle: cert.projectTitle,
-      smeCompany: cert.smeName,
-      issueDate: cert.issuedAt.toISOString().split('T')[0],
-      skillsVerified: cert.project.requiredSkillTags || [],
-      verificationCode: cert.verificationCode,
-    }));
-
-    return sendSuccess(res, mappedCertificates);
+    return sendSuccess(res, certificates.map(mapCertificate));
   } catch (error: any) {
     return sendError(res, error.message || 'Failed to fetch certificates', 500, 'SERVER_ERROR');
   }

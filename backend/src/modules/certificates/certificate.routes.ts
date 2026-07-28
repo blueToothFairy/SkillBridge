@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { getCertificateByCode, getStudentCertificates } from './certificate.controller';
+import { getCertificateByCode, getStudentCertificates, issueCertificate } from './certificate.controller';
+import { authenticateJwt, requireRole } from '../../middlewares/auth';
 
 const router = Router();
 
-// Retrieve certificates by student profile ID
+router.post('/', authenticateJwt, requireRole(['SME', 'ADMIN']), issueCertificate);
 router.get('/student/:studentId', getStudentCertificates);
-
-// Public verification endpoint
+router.get('/verify/:code', getCertificateByCode);
 router.get('/:code', getCertificateByCode);
 
 export default router;
