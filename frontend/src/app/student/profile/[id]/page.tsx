@@ -29,7 +29,6 @@ export default function StudentProfilePage() {
   const { studentProfile, portfolioEntries } = useApp();
   const { user } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Portfolio' | 'Completed Projects'>('Overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [portfolios, setPortfolios] = useState<any[]>([]);
@@ -207,22 +206,6 @@ export default function StudentProfilePage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 text-sm font-semibold">
-        {(['Overview', 'Portfolio', 'Completed Projects'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
