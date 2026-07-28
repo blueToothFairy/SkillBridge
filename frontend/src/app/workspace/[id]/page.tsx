@@ -12,6 +12,7 @@ import {
   reviewMilestoneApi,
   cancelMilestoneSubmissionApi,
 } from '@/lib/api/milestones';
+import { fetchMyApplicationsApi } from '@/lib/api/applications';
 import { ApiProject, Milestone } from '@/types';
 import MilestoneProgressBar from '@/components/milestones/MilestoneProgressBar';
 import { parseMarkdown } from '@/lib/markdown';
@@ -44,6 +45,7 @@ export default function ProjectWorkspacePage() {
   const [userProjects, setUserProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasNoProjects, setHasNoProjects] = useState<boolean>(false);
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'Overview' | 'Milestones' | 'Deliverables' | 'Activity'>('Overview');
@@ -59,36 +61,51 @@ export default function ProjectWorkspacePage() {
     async function loadSelectorProjects() {
       try {
         if (token) {
-          const [inProgressRes, pendingRes, completedRes] = await Promise.all([
-            fetchProjectsApi({ limit: 50, status: 'IN_PROGRESS' }),
-            fetchProjectsApi({ limit: 50, status: 'PENDING_ACCEPTANCE' }),
-            fetchProjectsApi({ limit: 50, status: 'COMPLETED' })
-          ]);
+          let activeDbProjects: any[] = [];
+          if (authRole === 'STUDENT') {
+            const apps = await fetchMyApplicationsApi(token);
+            activeDbProjects = apps
+              .filter((app: any) => app.status === 'ACCEPTED' && app.project)
+              .map((app: any) => app.project);
+            if (activeDbProjects.length === 0) {
+              setHasNoProjects(true);
+              setUserProjects([]);
+              setLoading(false);
+              return;
+            }
+          } else if (authRole === 'SME') {
+            const res = await fetchProjectsApi({ limit: 50, mine: true, token });
+            activeDbProjects = res.projects;
+          } else {
+            const [inProgressRes, pendingRes, completedRes] = await Promise.all([
+              fetchProjectsApi({ limit: 50, status: 'IN_PROGRESS', token }),
+              fetchProjectsApi({ limit: 50, status: 'PENDING_ACCEPTANCE', token }),
+              fetchProjectsApi({ limit: 50, status: 'COMPLETED', token })
+            ]);
+            activeDbProjects = [
+              ...inProgressRes.projects,
+              ...pendingRes.projects,
+              ...completedRes.projects
+            ];
+          }
           
-          const activeDbProjects = [
-            ...inProgressRes.projects,
-            ...pendingRes.projects,
-            ...completedRes.projects
-          ];
-          
-          // Combine with mock projects for a complete dropdown list
-          const combined = [
-            ...activeDbProjects,
-            ...mockProjects
-          ];
-          setUserProjects(combined);
+          setHasNoProjects(false);
+          // Use active database projects if any are found, otherwise fallback to mock projects for demonstration
+          setUserProjects(activeDbProjects.length > 0 ? activeDbProjects : mockProjects);
         } else {
+          setHasNoProjects(false);
           setUserProjects(mockProjects);
         }
       } catch (err) {
         console.error('Failed to load user projects for selector:', err);
+        setHasNoProjects(false);
         setUserProjects(mockProjects);
       }
     }
     if (!authLoading) {
       loadSelectorProjects();
     }
-  }, [token, authLoading, mockProjects]);
+  }, [token, authLoading, authRole, mockProjects]);
 
   // 2. Fetch project and milestone details
   const loadWorkspaceData = useCallback(async () => {
@@ -125,8 +142,10 @@ export default function ProjectWorkspacePage() {
       router.push('/login');
       return;
     }
-    loadWorkspaceData();
-  }, [routeProjectId, token, authLoading, isAuthenticated, loadWorkspaceData, router]);
+    if (!hasNoProjects) {
+      loadWorkspaceData();
+    }
+  }, [routeProjectId, token, authLoading, isAuthenticated, loadWorkspaceData, router, hasNoProjects]);
 
   // Student: Submit deliverable
   const handleSubmitDeliverable = async (milestoneId: string) => {
@@ -210,6 +229,28 @@ export default function ProjectWorkspacePage() {
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-2 text-slate-400">
         <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
         <span className="text-sm font-medium">Đang tải không gian làm việc...</span>
+      </div>
+    );
+  }
+
+  if (hasNoProjects) {
+    return (
+      <div className="card-crisp p-12 bg-white text-center space-y-4 max-w-xl mx-auto my-12 shadow-sm rounded-xl border border-slate-200">
+        <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+          <FolderGit2 className="h-6 w-6" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-sm font-bold text-slate-800">Bạn chưa ứng tuyển vào dự án nào</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed font-medium">
+            Hiện tại bạn chưa tham gia hoặc chưa được nhận vào dự án nào. Hãy ứng tuyển vào các dự án để bắt đầu làm việc.
+          </p>
+        </div>
+        <Link
+          href="/student/browse"
+          className="btn-primary bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 inline-block text-xs font-semibold"
+        >
+          Tìm kiếm dự án
+        </Link>
       </div>
     );
   }

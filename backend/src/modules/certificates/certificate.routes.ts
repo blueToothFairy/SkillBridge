@@ -1,7 +1,10 @@
 import { Router } from 'express';
-import { getCertificateByCode } from './certificate.controller';
+import { getCertificateByCode, getStudentCertificates } from './certificate.controller';
 
 const router = Router();
+
+// Retrieve certificates by student profile ID
+router.get('/student/:studentId', getStudentCertificates);
 
 // Public verification endpoint
 router.get('/:code', getCertificateByCode);

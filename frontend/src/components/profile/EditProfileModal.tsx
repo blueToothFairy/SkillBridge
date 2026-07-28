@@ -21,6 +21,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
   const [university, setUniversity] = useState(user?.profile?.university || '');
   const [major, setMajor] = useState(user?.profile?.major || '');
   const [year, setYear] = useState<number>(user?.profile?.year || 3);
+  const [githubUrl, setGithubUrl] = useState(user?.profile?.skills?.githubUrl || '');
+  const [linkedInUrl, setLinkedInUrl] = useState(user?.profile?.skills?.linkedInUrl || '');
   const [availableSkills, setAvailableSkills] = useState<Tag[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>(
     user?.profile?.skills
@@ -113,6 +115,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
             expert: selectedSkills.slice(0, 2),
             proficient: selectedSkills.slice(2, 4),
             familiar: selectedSkills.slice(4),
+            githubUrl,
+            linkedInUrl,
           },
         });
       } else {
@@ -223,6 +227,33 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
                     <option value={4}>Year 4</option>
                     <option value={5}>Year 5+</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    GitHub URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://github.com/..."
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    LinkedIn URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://linkedin.com/in/..."
+                    value={linkedInUrl}
+                    onChange={(e) => setLinkedInUrl(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-xs transition-all"
+                  />
                 </div>
               </div>
 
