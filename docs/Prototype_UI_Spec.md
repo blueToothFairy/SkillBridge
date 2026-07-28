@@ -315,9 +315,9 @@ Progress: SME Review → Student Review → Published. Star ratings 5 criteria +
 
 ### Thịnh (Day 25–28) — tham chiếu khi làm
 - [ ] Post Project stepper visual (Hình 1)
-- [ ] Student Profile header + skill tiers (Hình 2)
+- [x] Student Profile header + skill tiers (Hình 2)
 - [ ] Acceptance actions wire API (Hình 5 decision)
-- [ ] Verified Portfolio page (Hình 6)
+- [x] Verified Portfolio page (Hình 6)
 
 ---
 

@@ -108,8 +108,8 @@
 - [x] `GET /api/portfolio/student/:id`
 - [x] UI Student Profile + Verified Portfolio
   - **Note:** Route hiện là `/student/profile/[id]`; đã fetch API thật và hiển thị portfolio entries + link certificate.
-- [~] UI chưa khớp hoàn toàn prototype Hình 2 & 6
-  - **Note:** Đã có chức năng chính, portfolio thật và link certificate; đã bỏ workspace hardcoded `proj-1` bằng route `/workspace` tự resolve dự án accepted, nhưng bố cục/tabs/stats vẫn chưa đạt đủ độ giống prototype.
+- [x] UI Student Profile + Verified Portfolio khớp prototype Hình 2 & 6
+  - **Note:** Đã có tabs Overview/Portfolio/Completed/Experience, skill tiers Expert/Proficient/Familiar, stat cards, filters, portfolio cards với Share/Certificate; Experience tab giữ placeholder V1.1.
 
 ---
 
@@ -123,8 +123,8 @@
   - **Note:** Hỗ trợ đúng path plan `GET /api/certificates/verify/:code` và vẫn giữ alias `GET /api/certificates/:code` để không gãy link cũ.
 - [x] UI certificate list + link certificate
   - **Note:** `/certificates` và `/certificates/[id]` đều dùng API thật theo verification code; bỏ phụ thuộc `MOCK_CERTIFICATE`.
-- [~] Export PDF / Share
-  - **Note:** Đã có nút copy verification link và `Print / Save PDF` từ browser; chưa có file PDF server-generated hay QR code riêng.
+- [x] Export PDF / Share
+  - **Note:** Certificate detail có QR verify, Export PDF qua print stylesheet, copy link, và native Web Share API (fallback clipboard).
 - [x] Seed demo phong phú
   - **Note:** `prisma/seed.ts` hiện tạo 1 admin, 3 SME, 10 students, 5 projects cùng applications + milestones theo hướng idempotent để demo dễ hơn.
 - [x] Schema + certificates list API đã có
