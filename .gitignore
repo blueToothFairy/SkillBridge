@@ -11,6 +11,7 @@ node_modules/
 
 # Build and Production Outputs
 /dist/
+backend/dist/
 /build/
 /out/
 /.next/
