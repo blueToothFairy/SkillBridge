@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchTagsApi } from '@/lib/api/tags';
 import { createProjectApi, updateProjectApi } from '@/lib/api/projects';
 import { Tag, ApiProject } from '@/types';
+import { parseMarkdown } from '@/lib/markdown';
 import {
   Check,
   Plus,
@@ -163,11 +164,11 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
   }[]>(
     projectToEdit?.milestones
       ? projectToEdit.milestones.map((m) => ({
-          title: m.title,
-          description: m.description,
-          deadline: new Date(m.deadline).toISOString().substring(0, 10),
-          amountVnd: Number(m.amountVnd),
-        }))
+        title: m.title,
+        description: m.description,
+        deadline: new Date(m.deadline).toISOString().substring(0, 10),
+        amountVnd: Number(m.amountVnd),
+      }))
       : []
   );
 
@@ -239,6 +240,23 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
 
   // Dynamic budget calculation (Sum of all milestones budget)
   const totalBudget = milestones.reduce((sum, m) => sum + Number(m.amountVnd), 0);
+
+  // Dynamic duration in weeks & maximum deadline calculation
+  const calculatedDurationWeeks = (() => {
+    if (milestones.length === 0) return 4;
+    const deadlines = milestones.map((m) => new Date(m.deadline).getTime());
+    const maxTime = Math.max(...deadlines);
+    const diffTime = maxTime - Date.now();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(1, Math.ceil(diffDays / 7));
+  })();
+
+  const calculatedDeadline = (() => {
+    if (milestones.length === 0) return new Date().toISOString();
+    const deadlines = milestones.map((m) => new Date(m.deadline).getTime());
+    const maxTime = Math.max(...deadlines);
+    return new Date(maxTime).toISOString();
+  })();
 
   useEffect(() => {
     async function loadTags() {
@@ -330,6 +348,15 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
     setStep(2);
   };
 
+  const handleNextToStep3 = () => {
+    setErrorMsg(null);
+    if (milestones.length === 0) {
+      setErrorMsg('Dự án phải có ít nhất 1 cột mốc thanh toán');
+      return;
+    }
+    setStep(3);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -339,21 +366,6 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
       setErrorMsg('Dự án phải có ít nhất 1 cột mốc thanh toán');
       return;
     }
-
-    // Dynamic duration in weeks & maximum deadline calculation
-    const calculatedDurationWeeks = (() => {
-      const deadlines = milestones.map((m) => new Date(m.deadline).getTime());
-      const maxTime = Math.max(...deadlines);
-      const diffTime = maxTime - Date.now();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return Math.max(1, Math.ceil(diffDays / 7));
-    })();
-
-    const calculatedDeadline = (() => {
-      const deadlines = milestones.map((m) => new Date(m.deadline).getTime());
-      const maxTime = Math.max(...deadlines);
-      return new Date(maxTime).toISOString();
-    })();
 
     setSubmitting(true);
     try {
@@ -409,30 +421,40 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
   return (
     <div className="space-y-6">
       {/* Wizard Progress Steps Indicator */}
-      <div className="flex items-center justify-center gap-2 max-w-md mx-auto py-2">
-        <div className="flex items-center gap-1">
+      <div className="flex items-center justify-center gap-4 max-w-lg mx-auto py-2">
+        <div className="flex items-center gap-1.5">
           <span
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              step === 1 ? 'bg-brand-primary text-white' : 'bg-emerald-500 text-white'
-            }`}
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${step === 1 ? 'bg-brand-primary text-white scale-110 shadow-xs' : 'bg-emerald-500 text-white'
+              }`}
           >
             {step > 1 ? <Check className="w-3.5 h-3.5" /> : '1'}
           </span>
-          <span className={`text-xs font-semibold ${step === 1 ? 'text-slate-900' : 'text-slate-500'}`}>
+          <span className={`text-xs font-semibold transition-colors duration-300 ${step === 1 ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
             Thông tin cơ bản
           </span>
         </div>
-        <div className={`h-[1px] w-12 ${step > 1 ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-        <div className="flex items-center gap-1">
+        <div className={`h-[1px] w-8 transition-colors duration-300 ${step > 1 ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+        <div className="flex items-center gap-1.5">
           <span
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-              step === 2 ? 'bg-brand-primary text-white' : 'bg-slate-200 text-slate-500'
-            }`}
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${step === 2 ? 'bg-brand-primary text-white scale-110 shadow-xs' : step > 2 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
+              }`}
           >
-            2
+            {step > 2 ? <Check className="w-3.5 h-3.5" /> : '2'}
           </span>
-          <span className={`text-xs font-semibold ${step === 2 ? 'text-slate-900' : 'text-slate-500'}`}>
-            Kế hoạch Cột mốc (Milestones)
+          <span className={`text-xs font-semibold transition-colors duration-300 ${step === 2 ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
+            Cột mốc & Ký quỹ
+          </span>
+        </div>
+        <div className={`h-[1px] w-8 transition-colors duration-300 ${step > 2 ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${step === 3 ? 'bg-brand-primary text-white scale-110 shadow-xs' : 'bg-slate-200 text-slate-500'
+              }`}
+          >
+            3
+          </span>
+          <span className={`text-xs font-semibold transition-colors duration-300 ${step === 3 ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
+            Xem lại & Gửi
           </span>
         </div>
       </div>
@@ -522,11 +544,10 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
                       type="button"
                       key={skill.id}
                       onClick={() => handleToggleSkill(skill.name)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                        isSelected
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${isSelected
                           ? 'bg-brand-primary text-white shadow-xs'
                           : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
-                      }`}
+                        }`}
                     >
                       {isSelected && <Check className="w-3.5 h-3.5" />}
                       {skill.name}
@@ -628,7 +649,7 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
                 {formatVnd(totalBudget)}
               </p>
               <p className="text-xs text-slate-600 leading-relaxed max-w-2xl font-medium">
-                Tổng ngân sách dự án bằng tổng giá trị giải ngân của các cột mốc bàn giao bên dưới. 
+                Tổng ngân sách dự án bằng tổng giá trị giải ngân của các cột mốc bàn giao bên dưới.
                 SME không cần điền tổng tiền thủ công. Khi bạn thêm/xóa cột mốc, con số này sẽ cập nhật.
               </p>
             </div>
@@ -760,11 +781,168 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
               </button>
 
               <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+                <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
                   Ký quỹ giải ngân tự động qua Cột mốc
                 </div>
 
+                <button
+                  type="button"
+                  onClick={handleNextToStep3}
+                  className="btn-primary inline-flex items-center justify-center gap-2 px-6 py-2.5 text-white font-bold text-sm shadow-sm"
+                >
+                  Tiếp tục <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Review & Submit */}
+        {step === 3 && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="p-4 bg-blue-50/60 border border-blue-200/50 rounded-xl space-y-1.5">
+              <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wider block">
+                Xem lại thông tin dự án
+              </span>
+              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                Vui lòng kiểm tra kỹ tất cả các thông tin và kế hoạch cột mốc giải ngân dưới đây trước khi gửi dự án lên hệ thống.
+              </p>
+            </div>
+
+            {/* General Info Summary */}
+            <div className="border border-slate-200/80 rounded-xl p-5 bg-slate-50/20 hover:bg-slate-50/30 transition-all space-y-4">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  Thông tin cơ bản
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="text-xs font-semibold text-brand-primary hover:text-blue-800 transition-colors"
+                >
+                  Thay đổi
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 text-xs">
+                <div className="space-y-1 col-span-2">
+                  <span className="text-slate-400 font-medium block">Tiêu đề dự án</span>
+                  <span className="text-sm font-bold text-slate-900 block">{title}</span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-slate-400 font-medium block">Danh mục</span>
+                  <span className="font-bold text-slate-800 block text-xs">
+                    {categories.find((c) => c.id === categoryTagId)?.name || 'Chưa chọn'}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-slate-400 font-medium block">Số lượng ứng viên tối đa</span>
+                  <span className="font-bold text-slate-800 block text-xs">{maxApplicants} ứng viên</span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-slate-400 font-medium block">Tổng ngân sách dự án (Tổng tiền cột mốc)</span>
+                  <span className="font-extrabold text-brand-primary text-sm block">
+                    {formatVnd(totalBudget)}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-slate-400 font-medium block">Thời gian thực hiện (ước tính)</span>
+                  <span className="font-bold text-slate-800 block text-xs">{calculatedDurationWeeks} tuần</span>
+                </div>
+              </div>
+
+              {selectedSkillNames.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <span className="text-slate-400 text-xs font-medium block">Kỹ năng yêu cầu</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedSkillNames.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-semibold rounded-md"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Description Summary */}
+            <div className="border border-slate-200/80 rounded-xl p-5 bg-slate-50/20 hover:bg-slate-50/30 transition-all space-y-3">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Mô tả chi tiết dự án
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="text-xs font-semibold text-brand-primary hover:text-blue-800 transition-colors"
+                >
+                  Thay đổi
+                </button>
+              </div>
+              <div className="p-4 bg-white border border-slate-200 rounded-lg max-h-[220px] overflow-y-auto space-y-1 custom-scrollbar shadow-xs">
+                {parseMarkdown(description)}
+              </div>
+            </div>
+
+            {/* Milestones Plan Summary */}
+            <div className="border border-slate-200/80 rounded-xl p-5 bg-slate-50/20 hover:bg-slate-50/30 transition-all space-y-3">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Kế hoạch cột mốc giải ngân ({milestones.length})
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="text-xs font-semibold text-brand-primary hover:text-blue-800 transition-colors"
+                >
+                  Thay đổi
+                </button>
+              </div>
+              <div className="space-y-3">
+                {milestones.map((m, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 bg-white border border-slate-200 rounded-xl text-xs flex justify-between items-start gap-4 hover:border-slate-300 transition-all shadow-xs"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                          MỐC {idx + 1}
+                        </span>
+                        <span className="font-bold text-slate-900 text-xs">{m.title}</span>
+                      </div>
+                      <p className="text-slate-500 text-[11px] leading-relaxed max-w-xl">{m.description}</p>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        Hạn chót: {new Date(m.deadline).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
+                    <span className="font-extrabold text-brand-primary shrink-0 text-xs sm:text-sm">
+                      {formatVnd(m.amountVnd)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 3 Actions */}
+            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="btn-secondary text-xs py-2.5 px-4 flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-4 h-4" /> Quay lại Bước 2
+              </button>
+
+              <div className="flex items-center gap-2">
                 <button
                   type="submit"
                   disabled={submitting}
