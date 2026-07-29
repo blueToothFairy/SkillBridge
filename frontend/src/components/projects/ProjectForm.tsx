@@ -380,6 +380,7 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
             durationWeeks: calculatedDurationWeeks,
             maxApplicants,
             deadline: calculatedDeadline,
+            milestones,
           });
           setSuccessMsg('Cập nhật dự án thành công!');
         } else {

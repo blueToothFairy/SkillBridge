@@ -199,13 +199,32 @@ export async function updateProject(id: string, userId: string, data: Partial<Cr
     updateData.status = data.status;
   }
 
-  return await prisma.project.update({
-    where: { id },
-    data: updateData,
-    include: {
-      sme: true,
-      categoryTag: true,
-    },
+  return await prisma.$transaction(async (tx) => {
+    if (data.milestones && data.milestones.length > 0) {
+      await tx.milestone.deleteMany({
+        where: { projectId: id },
+      });
+      await tx.milestone.createMany({
+        data: data.milestones.map((m, idx) => ({
+          projectId: id,
+          title: m.title.trim(),
+          description: m.description.trim(),
+          deadline: new Date(m.deadline),
+          orderIndex: idx + 1,
+          status: 'PENDING',
+          amountVnd: m.amountVnd,
+        })),
+      });
+    }
+
+    return await tx.project.update({
+      where: { id },
+      data: updateData,
+      include: {
+        sme: true,
+        categoryTag: true,
+      },
+    });
   });
 }
 
@@ -223,6 +242,11 @@ export async function getPendingProjects() {
         },
       },
       categoryTag: true,
+      milestones: {
+        orderBy: {
+          orderIndex: 'asc',
+        },
+      },
     },
   });
 }
