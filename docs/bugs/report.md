@@ -20,8 +20,11 @@
 * **Mô tả:** Đặc tả yêu cầu SME có thể hủy dự án khi ở trạng thái `OPEN` (chưa có ứng viên được chấp nhận) chuyển sang `CANCELLED`. Nhưng hệ thống không có endpoint hủy riêng (`PATCH /api/projects/:id/cancel` hoặc tương đương). SME phải tự PATCH trạng thái `status: 'CANCELLED'` qua endpoint chỉnh sửa chung, dẫn tới lỗ hổng bảo mật/nghiệp vụ nếu dự án đã khớp.
 
 ### Lỗi 4: Thiếu kiểm tra giới hạn khoảng biên của dự án trên Backend (`durationWeeks` & `maxApplicants`)
-* **Mô tả:** Đặc tả quy định thời gian dự án từ 1-8 tuần, và số ứng viên tối đa từ 1-4. Tuy nhiên, Backend hoàn toàn bỏ qua bước kiểm tra này, chấp nhận các giá trị không hợp lệ (ví dụ: duration = 9 tuần, maxApplicants = 0 hoặc 5).
+* **Mô tả:** Đặc tả quy định thời gian dự án từ 1-8 tuần, và số ứng viên tối đa từ 1-4. Tuy nhiên, Backend hoàn toàn bỏ qua bước kiểm tra này
 * **Hậu quả:** Sai lệch luồng nghiệp vụ cốt lõi của MVP.
 
 ### Lỗi 5: Cho phép hạn chót dự án ở quá khứ
 * **Mô tả:** Endpoint tạo dự án chấp nhận hạn chót cũ hơn thời gian hiện tại.
+
+### Lỗi 6: Cho phép sinh viên nộp deliverables khi mốc trước chưa được duyệt
+* **Mô tả:** Cả frontend/backend đều cho phép sinh viên nộp bài mặc dù môc trước chưa được SME phê duyệt.
