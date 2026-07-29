@@ -27,6 +27,112 @@ interface ProjectFormProps {
   onCancel?: () => void;
 }
 
+function markdownToHtml(markdown: string): string {
+  if (!markdown) return '<div><br></div>';
+  return markdown
+    .split('\n')
+    .map((line) => {
+      let content = line;
+      let headerLevel = 0;
+      const headerMatch = content.match(/^(#{1,6})\s+(.*)$/);
+      if (headerMatch) {
+        headerLevel = headerMatch[1].length;
+        content = headerMatch[2];
+      }
+
+      // Replace bold markdown with HTML strong tag
+      content = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      content = content.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+
+      if (headerLevel > 0) {
+        return `<h${headerLevel}>${content}</h${headerLevel}>`;
+      }
+      if (content.trim() === '') {
+        return '<div><br></div>';
+      }
+      return `<div>${content}</div>`;
+    })
+    .join('');
+}
+
+function htmlToMarkdown(html: string): string {
+  if (!html) return '';
+  if (typeof window === 'undefined') return '';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const body = doc.body;
+
+  const markdownLines: string[] = [];
+
+  const processNode = (node: Node): string => {
+    if (node.nodeType === 3) { // Node.TEXT_NODE
+      return node.textContent || '';
+    }
+
+    if (node.nodeType === 1) { // Node.ELEMENT_NODE
+      const el = node as HTMLElement;
+      const tagName = el.tagName.toLowerCase();
+
+      let childContent = '';
+      el.childNodes.forEach((child) => {
+        childContent += processNode(child);
+      });
+
+      if (tagName === 'strong' || tagName === 'b') {
+        return `**${childContent}**`;
+      }
+      return childContent;
+    }
+
+    return '';
+  };
+
+  body.childNodes.forEach((node) => {
+    if (node.nodeType === 3) { // Node.TEXT_NODE
+      const text = node.textContent || '';
+      if (text.trim()) {
+        markdownLines.push(text);
+      }
+    } else if (node.nodeType === 1) { // Node.ELEMENT_NODE
+      const el = node as HTMLElement;
+      const tagName = el.tagName.toLowerCase();
+
+      let innerText = '';
+      el.childNodes.forEach((child) => {
+        innerText += processNode(child);
+      });
+
+      if (tagName === 'h1') {
+        markdownLines.push(`# ${innerText}`);
+      } else if (tagName === 'h2') {
+        markdownLines.push(`## ${innerText}`);
+      } else if (tagName === 'h3') {
+        markdownLines.push(`### ${innerText}`);
+      } else if (tagName === 'h4') {
+        markdownLines.push(`#### ${innerText}`);
+      } else if (tagName === 'h5') {
+        markdownLines.push(`##### ${innerText}`);
+      } else if (tagName === 'h6') {
+        markdownLines.push(`###### ${innerText}`);
+      } else if (tagName === 'br') {
+        markdownLines.push('');
+      } else if (tagName === 'div' || tagName === 'p') {
+        if (el.innerHTML === '<br>' || el.innerHTML === '<div><br></div>' || el.innerHTML === '<p><br></p>') {
+          markdownLines.push('');
+        } else {
+          markdownLines.push(innerText);
+        }
+      } else {
+        if (innerText.trim() || markdownLines.length > 0) {
+          markdownLines.push(innerText);
+        }
+      }
+    }
+  });
+
+  return markdownLines.join('\n');
+}
+
 export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: ProjectFormProps) {
   const router = useRouter();
   const { token } = useAuth();
@@ -75,7 +181,61 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const isInitializedRef = useRef<boolean>(false);
+
+  // Initialize contenteditable innerHTML from description state once on mount or step change
+  useEffect(() => {
+    if (step === 1 && editorRef.current && !isInitializedRef.current) {
+      editorRef.current.innerHTML = markdownToHtml(description);
+      isInitializedRef.current = true;
+    }
+    if (step !== 1) {
+      isInitializedRef.current = false;
+    }
+  }, [step, description]);
+
+  const handleEditorInput = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const html = editor.innerHTML;
+    const markdown = htmlToMarkdown(html);
+    setDescription(markdown);
+  };
+
+  const handleInsertFormat = (formatType: 'bold' | 'heading') => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    editor.focus();
+
+    if (formatType === 'bold') {
+      document.execCommand('bold', false);
+    } else if (formatType === 'heading') {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        let parent = selection.anchorNode;
+        let isHeading = false;
+        while (parent && parent !== editor) {
+          if (parent.nodeName === 'H3') {
+            isHeading = true;
+            break;
+          }
+          parent = parent.parentNode;
+        }
+        if (isHeading) {
+          document.execCommand('formatBlock', false, '<div>');
+        } else {
+          document.execCommand('formatBlock', false, '<h3>');
+        }
+      } else {
+        document.execCommand('formatBlock', false, '<h3>');
+      }
+    }
+
+    // Sync input
+    handleEditorInput();
+  };
 
   // Dynamic budget calculation (Sum of all milestones budget)
   const totalBudget = milestones.reduce((sum, m) => sum + Number(m.amountVnd), 0);
@@ -111,57 +271,6 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
         setSelectedSkillNames([...selectedSkillNames, skillName]);
       }
     }
-  };
-
-  const handleInsertFormat = (formatType: 'bold' | 'heading') => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-
-    let before = text.substring(0, start);
-    let selected = text.substring(start, end);
-    let after = text.substring(end);
-
-    let replacement = '';
-    let newCursorPos = start;
-
-    if (formatType === 'bold') {
-      if (selected) {
-        replacement = `**${selected}**`;
-        newCursorPos = start + replacement.length;
-      } else {
-        replacement = '**chữ in đậm**';
-        newCursorPos = start + replacement.length;
-      }
-    } else if (formatType === 'heading') {
-      const lastNewline = before.lastIndexOf('\n');
-      if (lastNewline === -1) {
-        before = '### ' + before;
-        newCursorPos = start + 4;
-      } else {
-        before = before.substring(0, lastNewline + 1) + '### ' + before.substring(lastNewline + 1);
-        newCursorPos = start + 4;
-      }
-      replacement = selected;
-    }
-
-    setDescription(before + replacement + after);
-
-    setTimeout(() => {
-      textarea.focus();
-      if (selected) {
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      } else if (formatType === 'bold') {
-        const selStart = start + 2;
-        const selEnd = start + 2 + 11;
-        textarea.setSelectionRange(selStart, selEnd);
-      } else {
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    }, 0);
   };
 
   const handleAddMilestone = () => {
@@ -430,11 +539,8 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
             {/* Description */}
             <div>
               <label className="block text-sm font-semibold text-slate-900 mb-1">
-                Mô tả chi tiết bài viết <span className="text-rose-500">*</span>
+                Mô tả chi tiết dự án <span className="text-rose-500">*</span>
               </label>
-              <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
-                Hỗ trợ định dạng văn bản nâng cao. Nhấp vào các nút bên dưới để chèn nhanh tiêu đề hoặc in đậm văn bản.
-              </p>
 
               <div className="flex flex-col rounded-lg border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-brand-primary focus-within:border-brand-primary transition-all">
                 {/* Toolbar */}
@@ -443,7 +549,7 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
                     type="button"
                     onClick={() => handleInsertFormat('bold')}
                     className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                    title="In đậm (Bold)"
+                    title="In đậm"
                   >
                     <Bold className="w-3.5 h-3.5 text-slate-700" />
                     <span>In đậm</span>
@@ -453,24 +559,43 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
                     type="button"
                     onClick={() => handleInsertFormat('heading')}
                     className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                    title="Tiêu đề (Heading H3)"
+                    title="Tiêu đề"
                   >
                     <Heading className="w-3.5 h-3.5 text-slate-700" />
-                    <span>Tiêu đề H3</span>
+                    <span>Tiêu đề</span>
                   </button>
                 </div>
 
-                {/* Textarea */}
-                <textarea
-                  ref={textareaRef}
-                  rows={8}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Nêu rõ yêu cầu dự án, sản phẩm bàn giao mong muốn và tiêu chí đánh giá..."
-                  className="w-full px-4 py-3 bg-white border-0 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 transition-all text-xs sm:text-sm font-mono resize-y"
-                  required
+                {/* ContentEditable Div */}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleEditorInput}
+                  {...{ placeholder: "Nêu rõ yêu cầu dự án, sản phẩm bàn giao mong muốn và tiêu chí đánh giá..." }}
+                  className="rich-editor w-full px-4 py-3 bg-white border-0 text-slate-900 focus:outline-none transition-all text-xs sm:text-sm font-sans min-h-[200px] overflow-y-auto"
+                  style={{ outline: 'none' }}
                 />
               </div>
+
+              <style>{`
+                .rich-editor:empty:before {
+                  content: attr(placeholder);
+                  color: #94a3b8;
+                  cursor: text;
+                  pointer-events: none;
+                }
+                .rich-editor h3 {
+                  font-size: 1.125rem;
+                  font-weight: bold;
+                  color: #0f172a;
+                  margin-top: 1rem;
+                  margin-bottom: 0.5rem;
+                }
+                .rich-editor strong {
+                  font-weight: bold;
+                  color: #0f172a;
+                }
+              `}</style>
             </div>
 
             {/* Step 1 Actions */}
