@@ -169,3 +169,20 @@ export async function requestProjectRevisionApi(
 
   return data.data;
 }
+
+export async function cancelProjectApi(token: string, id: string): Promise<ApiProject> {
+  const res = await fetch(`${API_BASE_URL}/api/projects/${id}/cancel`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error?.message || 'Failed to cancel project');
+  }
+
+  return data.data;
+}

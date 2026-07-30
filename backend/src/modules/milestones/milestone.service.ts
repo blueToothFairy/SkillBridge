@@ -107,6 +107,21 @@ export async function submitDeliverable(milestoneId: string, studentUserId: stri
     throw new Error('Cannot submit to an already accepted milestone');
   }
 
+  // Check if all previous milestones are ACCEPTED
+  if (milestone.orderIndex > 1) {
+    const previousUnaccepted = await prisma.milestone.findFirst({
+      where: {
+        projectId: milestone.projectId,
+        orderIndex: { lt: milestone.orderIndex },
+        status: { not: MilestoneStatus.ACCEPTED },
+      },
+    });
+
+    if (previousUnaccepted) {
+      throw new Error(`Cannot submit to milestone ${milestone.orderIndex} because previous milestone(s) are not accepted yet`);
+    }
+  }
+
   return await prisma.milestone.update({
     where: { id: milestoneId },
     data: {

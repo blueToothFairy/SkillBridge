@@ -168,7 +168,7 @@ export async function getProjectById(id: string) {
   });
 }
 
-export async function updateProject(id: string, userId: string, data: Partial<CreateProjectInput> & { status?: ProjectStatus }) {
+export async function updateProject(id: string, userId: string, data: Partial<CreateProjectInput>) {
   const project = await prisma.project.findUnique({
     where: { id },
     include: { sme: true },
@@ -180,6 +180,14 @@ export async function updateProject(id: string, userId: string, data: Partial<Cr
 
   if (project.sme.userId !== userId) {
     throw new Error('Unauthorized to edit this project');
+  }
+
+  if (
+    project.status !== ProjectStatus.DRAFT &&
+    project.status !== ProjectStatus.OPEN &&
+    project.status !== ProjectStatus.UNDER_REVIEW
+  ) {
+    throw new Error('Only projects in DRAFT, OPEN, or UNDER_REVIEW status can be updated');
   }
 
   const updateData: any = {};
@@ -195,8 +203,6 @@ export async function updateProject(id: string, userId: string, data: Partial<Cr
   // If the SME edits details of an OPEN or DRAFT project, return it to UNDER_REVIEW
   if (project.status === ProjectStatus.OPEN || project.status === ProjectStatus.DRAFT) {
     updateData.status = ProjectStatus.UNDER_REVIEW;
-  } else if (data.status) {
-    updateData.status = data.status;
   }
 
   return await prisma.$transaction(async (tx) => {
@@ -225,6 +231,34 @@ export async function updateProject(id: string, userId: string, data: Partial<Cr
         categoryTag: true,
       },
     });
+  });
+}
+
+export async function cancelProject(id: string, userId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: { sme: true },
+  });
+
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  if (project.sme.userId !== userId) {
+    throw new Error('Unauthorized to cancel this project');
+  }
+
+  if (project.status !== ProjectStatus.OPEN) {
+    throw new Error('Project can only be cancelled in OPEN status');
+  }
+
+  return await prisma.project.update({
+    where: { id },
+    data: { status: ProjectStatus.CANCELLED },
+    include: {
+      sme: true,
+      categoryTag: true,
+    },
   });
 }
 
