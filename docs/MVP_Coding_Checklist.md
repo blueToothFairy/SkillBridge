@@ -2,7 +2,7 @@
 
 > Tài liệu theo dõi tiến độ code theo [MVP_Plan.md](../../doc/MVP_Plan.md).  
 > UI nguồn sự thật: [`Prototype_UI_Spec.md`](./Prototype_UI_Spec.md)  
-> Cập nhật lần cuối: **2026-07-28** (đã sync `ha` với `main` và chốt thêm gap Day 28).
+> Cập nhật lần cuối: **2026-07-30** (audit E2E Flow 1–4 + bugfix trên `main`).
 
 **Legend:** `[x]` hoàn thành đạt · `[~]` hoàn thành nhưng còn note · `[ ]` chưa làm
 
@@ -82,7 +82,7 @@
 - [x] UI `EscrowModal.tsx`
 - [x] UI `EscrowBadge.tsx`
 - [x] Trang `/escrow/[id]` khớp Hình 5 (summary, Released/Ready/Locked, Decision card)
-  - **Note:** Nút Request Revision disabled stub — chờ Thịnh API revise.
+  - **Note:** Approve & Release đã gọi `acceptProject` (tạo portfolio/cert + release). Request Revision đã wire modal + API.
 
 ---
 
@@ -133,10 +133,14 @@
 
 ## 29–31/07/2026
 
-- [ ] **29 Hà:** E2E Flow 1–2 (Auth → Post → Apply)
-- [ ] **29 Thịnh:** E2E Flow 3–4 + README/screenshots
+- [~] **29 Hà:** E2E Flow 1–2 (Auth → Post → Apply)
+  - **Note:** Audit + bugfix 30/7 đã harden Flow 1–2 (confirm-once, validations, cancel ACCEPTED guard, tags auth). Vẫn cần **test tay + ghi minh chứng** (screenshot/video).
+- [~] **29 Thịnh:** E2E Flow 3–4 + README/screenshots
+  - **Note:** Bug T1–T5 đã FIXED; P0 escrow accept/revision đã FIXED. README còn mỏng; screenshots/video demo còn thiếu (screenshots từng bị xóa trong PR fix).
 - [ ] **30 Cả 2:** Feature freeze & dry-run demo
 - [ ] **31 Cả 2:** Đóng gói `04.zip` + verify clean install
+
+Chi tiết bug: [`docs/bugs/report.md`](./bugs/report.md)
 
 ---
 
