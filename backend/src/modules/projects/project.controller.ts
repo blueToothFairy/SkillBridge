@@ -19,7 +19,22 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       return sendError(res, 'Required fields: title, description, categoryTagId, budget, durationWeeks', 400, 'VALIDATION_ERROR');
     }
 
-    const projectDeadline = deadline ? new Date(deadline) : new Date(Date.now() + Number(durationWeeks) * 7 * 24 * 60 * 60 * 1000);
+    const duration = Number(durationWeeks);
+    if (isNaN(duration) || duration < 1 || duration > 8) {
+      return sendError(res, 'Thời gian thực hiện dự án phải từ 1 đến 8 tuần', 400, 'VALIDATION_ERROR');
+    }
+
+    if (maxApplicants !== undefined) {
+      const applicants = Number(maxApplicants);
+      if (isNaN(applicants) || applicants < 1 || applicants > 4) {
+        return sendError(res, 'Số lượng ứng viên tối đa phải từ 1 đến 4', 400, 'VALIDATION_ERROR');
+      }
+    }
+
+    const projectDeadline = deadline ? new Date(deadline) : new Date(Date.now() + duration * 7 * 24 * 60 * 60 * 1000);
+    if (projectDeadline.getTime() <= Date.now()) {
+      return sendError(res, 'Hạn chót dự án phải ở tương lai', 400, 'VALIDATION_ERROR');
+    }
 
     if (!milestones || !Array.isArray(milestones)) {
       return sendError(res, 'Milestones are required when creating a project', 400, 'VALIDATION_ERROR');
@@ -42,6 +57,10 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       }
 
       const msDeadline = new Date(m.deadline);
+      if (msDeadline.getTime() <= Date.now()) {
+        return sendError(res, `Hạn chót của cột mốc "${m.title}" phải ở tương lai`, 400, 'VALIDATION_ERROR');
+      }
+
       if (msDeadline.getTime() > projectDeadline.getTime()) {
         return sendError(
           res,
@@ -63,7 +82,7 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       categoryTagId,
       requiredSkillTags: Array.isArray(requiredSkillTags) ? requiredSkillTags : [],
       budget: Number(budget),
-      durationWeeks: Number(durationWeeks),
+      durationWeeks: duration,
       maxApplicants: maxApplicants ? Number(maxApplicants) : undefined,
       deadline: projectDeadline,
       milestones,
@@ -147,6 +166,34 @@ export async function updateProject(req: AuthenticatedRequest, res: Response) {
     }
 
     const { id } = req.params;
+    const { durationWeeks, maxApplicants, deadline, milestones } = req.body;
+
+    if (durationWeeks !== undefined) {
+      const duration = Number(durationWeeks);
+      if (isNaN(duration) || duration < 1 || duration > 8) {
+        return sendError(res, 'Thời gian thực hiện dự án phải từ 1 đến 8 tuần', 400, 'VALIDATION_ERROR');
+      }
+    }
+
+    if (maxApplicants !== undefined) {
+      const applicants = Number(maxApplicants);
+      if (isNaN(applicants) || applicants < 1 || applicants > 4) {
+        return sendError(res, 'Số lượng ứng viên tối đa phải từ 1 đến 4', 400, 'VALIDATION_ERROR');
+      }
+    }
+
+    if (deadline && new Date(deadline).getTime() <= Date.now()) {
+      return sendError(res, 'Hạn chót dự án phải ở tương lai', 400, 'VALIDATION_ERROR');
+    }
+
+    if (milestones && Array.isArray(milestones)) {
+      for (const m of milestones) {
+        if (m.deadline && new Date(m.deadline).getTime() <= Date.now()) {
+          return sendError(res, `Hạn chót của cột mốc "${m.title}" phải ở tương lai`, 400, 'VALIDATION_ERROR');
+        }
+      }
+    }
+
     const updatedProject = await projectService.updateProject(id, userId, req.body);
 
     return sendSuccess(res, updatedProject);
@@ -158,6 +205,30 @@ export async function updateProject(req: AuthenticatedRequest, res: Response) {
       return sendError(res, error.message, 403, 'FORBIDDEN');
     }
     return sendError(res, error.message || 'Failed to update project', 500, 'SERVER_ERROR');
+  }
+}
+
+export async function cancelProject(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return sendError(res, 'User identity unverified', 401, 'UNAUTHORIZED');
+    }
+
+    const updatedProject = await projectService.cancelProject(id, userId);
+    return sendSuccess(res, updatedProject);
+  } catch (error: any) {
+    if (error.message === 'Project not found') {
+      return sendError(res, error.message, 404, 'NOT_FOUND');
+    }
+    if (error.message === 'Unauthorized to cancel this project') {
+      return sendError(res, error.message, 403, 'FORBIDDEN');
+    }
+    if (error.message === 'Project can only be cancelled in OPEN status') {
+      return sendError(res, error.message, 400, 'BAD_REQUEST');
+    }
+    return sendError(res, error.message || 'Failed to cancel project', 500, 'SERVER_ERROR');
   }
 }
 

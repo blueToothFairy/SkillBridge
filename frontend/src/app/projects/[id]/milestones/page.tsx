@@ -408,50 +408,57 @@ export default function ProjectMilestonesPage() {
                     {/* Student Submit Actions */}
                     {role === 'STUDENT' && canStudentSubmit && project.status === 'IN_PROGRESS' && (
                       <div className="mt-4 pt-3 border-t border-slate-100">
-                        <div className="p-3.5 bg-slate-50/50 border border-slate-200 rounded-lg space-y-2">
-                          <label className="text-[11px] font-bold text-slate-700 block">
-                            {isSubmitted ? 'Chỉnh sửa/Nộp lại Link Sản Phẩm Bàn Giao' : 'Nộp Link Sản Phẩm Bàn Giao (Figma, GitHub, Google Drive...)'}
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="url"
-                              value={deliverableInput[m.id] !== undefined ? deliverableInput[m.id] : (m.deliverableUrl || '')}
-                              onChange={(e) =>
-                                setDeliverableInput((prev) => ({ ...prev, [m.id]: e.target.value }))
-                              }
-                              placeholder="https://github.com/project-link"
-                              className="flex-1 text-xs p-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
-                              disabled={submittingId === m.id}
-                            />
-                            <button
-                              onClick={() => handleSubmitDeliverable(m.id)}
-                              disabled={
-                                submittingId === m.id || 
-                                (deliverableInput[m.id] !== undefined ? !deliverableInput[m.id].trim() : !m.deliverableUrl)
-                              }
-                              className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5 disabled:opacity-50 shrink-0"
-                            >
-                              {submittingId === m.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : isSubmitted ? (
-                                'Cập nhật'
-                              ) : isRevision ? (
-                                'Nộp lại'
-                              ) : (
-                                'Nộp bài'
-                              )}
-                            </button>
-                            {isSubmitted && (
-                              <button
-                                onClick={() => handleCancelSubmission(m.id)}
-                                disabled={submittingId === m.id}
-                                className="btn-secondary text-xs py-2 px-3 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg font-semibold shrink-0"
-                              >
-                                Hủy bài nộp
-                              </button>
-                            )}
+                        {milestones.slice(0, idx).some(prevM => prevM.status !== 'ACCEPTED') ? (
+                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 font-medium flex items-center gap-1.5">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            <span>Bạn chỉ được nộp bài cho cột mốc này sau khi tất cả các cột mốc trước đó đã được SME phê duyệt.</span>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="p-3.5 bg-slate-50/50 border border-slate-200 rounded-lg space-y-2">
+                            <label className="text-[11px] font-bold text-slate-700 block">
+                              {isSubmitted ? 'Chỉnh sửa/Nộp lại Link Sản Phẩm Bàn Giao' : 'Nộp Link Sản Phẩm Bàn Giao (Figma, GitHub, Google Drive...)'}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="url"
+                                value={deliverableInput[m.id] !== undefined ? deliverableInput[m.id] : (m.deliverableUrl || '')}
+                                onChange={(e) =>
+                                  setDeliverableInput((prev) => ({ ...prev, [m.id]: e.target.value }))
+                                }
+                                placeholder="https://github.com/project-link"
+                                className="flex-1 text-xs p-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
+                                disabled={submittingId === m.id}
+                              />
+                              <button
+                                onClick={() => handleSubmitDeliverable(m.id)}
+                                disabled={
+                                  submittingId === m.id || 
+                                  (deliverableInput[m.id] !== undefined ? !deliverableInput[m.id].trim() : !m.deliverableUrl)
+                                }
+                                className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5 disabled:opacity-50 shrink-0"
+                              >
+                                {submittingId === m.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : isSubmitted ? (
+                                  'Cập nhật'
+                                ) : isRevision ? (
+                                  'Nộp lại'
+                                ) : (
+                                  'Nộp bài'
+                                )}
+                              </button>
+                              {isSubmitted && (
+                                <button
+                                  onClick={() => handleCancelSubmission(m.id)}
+                                  disabled={submittingId === m.id}
+                                  className="btn-secondary text-xs py-2 px-3 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg font-semibold shrink-0"
+                                >
+                                  Hủy bài nộp
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 

@@ -407,6 +407,7 @@ export default function ProjectWorkspacePage() {
                       const isSubmitted = m.status === 'SUBMITTED';
                       const isRevision = m.status === 'REVISION_REQUIRED';
                       const isPending = m.status === 'PENDING';
+                      const isInProgress = m.status === 'IN_PROGRESS';
 
                       return (
                         <div key={m.id} className="relative pl-10 space-y-2">
@@ -419,6 +420,8 @@ export default function ProjectWorkspacePage() {
                                 ? 'bg-amber-500 text-white'
                                 : isRevision
                                 ? 'bg-rose-500 text-white'
+                                : isInProgress
+                                ? 'bg-blue-600 text-white'
                                 : 'bg-slate-200 text-slate-600'
                             }`}
                           >
@@ -453,6 +456,8 @@ export default function ProjectWorkspacePage() {
                                   ? 'bg-amber-50 border border-amber-200 text-amber-700'
                                   : isRevision
                                   ? 'bg-rose-50 border border-rose-200 text-rose-700'
+                                  : isInProgress
+                                  ? 'bg-blue-50 border border-blue-200 text-blue-700'
                                   : 'bg-slate-50 border border-slate-200 text-slate-600'
                               }`}
                             >
@@ -462,6 +467,8 @@ export default function ProjectWorkspacePage() {
                                 ? 'Đang chờ duyệt'
                                 : isRevision
                                 ? 'Cần sửa đổi'
+                                : isInProgress
+                                ? 'Đang làm'
                                 : 'Chưa làm'}
                             </span>
                           </div>
@@ -495,52 +502,59 @@ export default function ProjectWorkspacePage() {
                           )}
 
                           {/* Student submit & cancel actions */}
-                          {userRole === 'STUDENT' && (isPending || isSubmitted || isRevision) && (project.status === 'IN_PROGRESS' || isMock) && (
+                          {userRole === 'STUDENT' && (isPending || isInProgress || isSubmitted || isRevision) && (project.status === 'IN_PROGRESS' || isMock) && (
                             <div className="pt-2">
-                              <div className="p-3 bg-slate-50/50 border border-slate-200 rounded-lg space-y-2 max-w-lg">
-                                <label className="text-[11px] font-bold text-slate-700 block">
-                                  {isSubmitted ? 'Chỉnh sửa / Cập nhật Link Bàn giao' : 'Nộp Link Sản Phẩm Bàn Giao'}
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="url"
-                                    value={deliverableInput[m.id] !== undefined ? deliverableInput[m.id] : (m.deliverableUrl || '')}
-                                    onChange={(e) =>
-                                      setDeliverableInput((prev) => ({ ...prev, [m.id]: e.target.value }))
-                                    }
-                                    placeholder="https://github.com/project-link"
-                                    className="flex-1 text-xs p-2 bg-white border border-slate-200 rounded-lg focus:outline-none"
-                                    disabled={submittingId === m.id}
-                                  />
-                                  <button
-                                    onClick={() => handleSubmitDeliverable(m.id)}
-                                    disabled={
-                                      submittingId === m.id || 
-                                      (deliverableInput[m.id] !== undefined ? !deliverableInput[m.id].trim() : !m.deliverableUrl)
-                                    }
-                                    className="btn-primary text-xs py-2 px-3 flex items-center gap-1 disabled:opacity-50 shrink-0"
-                                  >
-                                    {submittingId === m.id ? (
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    ) : isSubmitted ? (
-                                      'Cập nhật'
-                                    ) : isRevision ? (
-                                      'Nộp lại'
-                                    ) : (
-                                      'Nộp bài'
-                                    )}
-                                  </button>
-                                  {isSubmitted && !isMock && (
-                                    <button
-                                      onClick={() => handleCancelSubmission(m.id)}
-                                      disabled={submittingId === m.id}
-                                      className="btn-secondary text-xs py-2 px-3 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg font-semibold shrink-0"
-                                    >
-                                      Hủy nộp bài
-                                    </button>
-                                  )}
+                              {milestones.slice(0, idx).some(prevM => prevM.status !== 'ACCEPTED') ? (
+                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 max-w-lg mt-1 font-medium flex items-center gap-1.5">
+                                  <AlertCircle className="w-4 h-4 shrink-0" />
+                                  <span>Bạn chỉ được nộp bài cho cột mốc này sau khi tất cả các cột mốc trước đó đã được SME phê duyệt.</span>
                                 </div>
-                              </div>
+                              ) : (
+                                <div className="p-3 bg-slate-50/50 border border-slate-200 rounded-lg space-y-2 max-w-lg">
+                                  <label className="text-[11px] font-bold text-slate-700 block">
+                                    {isSubmitted ? 'Chỉnh sửa / Cập nhật Link Bàn giao' : 'Nộp Link Sản Phẩm Bàn Giao'}
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="url"
+                                      value={deliverableInput[m.id] !== undefined ? deliverableInput[m.id] : (m.deliverableUrl || '')}
+                                      onChange={(e) =>
+                                        setDeliverableInput((prev) => ({ ...prev, [m.id]: e.target.value }))
+                                      }
+                                      placeholder="https://github.com/project-link"
+                                      className="flex-1 text-xs p-2 bg-white border border-slate-200 rounded-lg focus:outline-none"
+                                      disabled={submittingId === m.id}
+                                    />
+                                    <button
+                                      onClick={() => handleSubmitDeliverable(m.id)}
+                                      disabled={
+                                        submittingId === m.id || 
+                                        (deliverableInput[m.id] !== undefined ? !deliverableInput[m.id].trim() : !m.deliverableUrl)
+                                      }
+                                      className="btn-primary text-xs py-2 px-3 flex items-center gap-1 disabled:opacity-50 shrink-0"
+                                    >
+                                      {submittingId === m.id ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      ) : isSubmitted ? (
+                                        'Cập nhật'
+                                      ) : isRevision ? (
+                                        'Nộp lại'
+                                      ) : (
+                                        'Nộp bài'
+                                      )}
+                                    </button>
+                                    {isSubmitted && !isMock && (
+                                      <button
+                                        onClick={() => handleCancelSubmission(m.id)}
+                                        disabled={submittingId === m.id}
+                                        className="btn-secondary text-xs py-2 px-3 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg font-semibold shrink-0"
+                                      >
+                                        Hủy nộp bài
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
 

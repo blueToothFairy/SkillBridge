@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { fetchProjectByIdApi } from '@/lib/api/projects';
+import { fetchProjectByIdApi, cancelProjectApi } from '@/lib/api/projects';
 import { ApiProject } from '@/types';
 import ProjectForm from '@/components/projects/ProjectForm';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { parseMarkdown } from '@/lib/markdown';
 import {
   ArrowLeft,
@@ -21,7 +22,8 @@ import {
   ShieldCheck,
   Loader2,
   Building2,
-  ExternalLink
+  ExternalLink,
+  XCircle
 } from 'lucide-react';
 
 export default function SmeProjectDetailPage() {
@@ -29,11 +31,13 @@ export default function SmeProjectDetailPage() {
   const router = useRouter();
   const projectId = params?.id as string;
   const { getProjectById } = useApp();
+  const { token } = useAuth();
 
   const [project, setProject] = useState<ApiProject | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [cancelling, setCancelling] = useState<boolean>(false);
 
   // Simulated metrics
   const [applicantCount, setApplicantCount] = useState<number>(0);
@@ -95,6 +99,24 @@ export default function SmeProjectDetailPage() {
   const handleEditSuccess = () => {
     setIsEditing(false);
     loadProject();
+  };
+
+  const handleCancelProject = async () => {
+    if (!token || !project) return;
+    if (!confirm('Bạn có chắc chắn muốn hủy dự án này không? Trạng thái dự án sẽ chuyển sang CANCELLED và bạn không thể chỉnh sửa lại.')) {
+      return;
+    }
+
+    try {
+      setCancelling(true);
+      const updated = await cancelProjectApi(token, project.id);
+      setProject(updated);
+      alert('Đã hủy dự án thành công!');
+    } catch (err: any) {
+      alert(err.message || 'Hủy dự án thất bại. Vui lòng thử lại.');
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const formatVnd = (amount: number) => {
@@ -161,12 +183,30 @@ export default function SmeProjectDetailPage() {
         >
           <ArrowLeft className="w-4 h-4" /> Quay lại Trang quản lý SME
         </Link>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-2"
-        >
-          <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa bài viết
-        </button>
+        <div className="flex items-center gap-2">
+          {project.status === 'OPEN' && (
+            <button
+              onClick={handleCancelProject}
+              disabled={cancelling}
+              className="px-4 py-2 text-xs font-semibold flex items-center gap-2 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {cancelling ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <XCircle className="w-3.5 h-3.5" />
+              )}
+              Hủy dự án
+            </button>
+          )}
+          {(project.status === 'DRAFT' || project.status === 'OPEN' || project.status === 'UNDER_REVIEW') && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-2"
+            >
+              <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa bài viết
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Details Grid */}

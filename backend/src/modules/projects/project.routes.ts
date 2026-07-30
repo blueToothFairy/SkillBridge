@@ -9,6 +9,7 @@ import {
   acceptProject,
   requestProjectRevision,
   triggerCron,
+  cancelProject,
 } from './project.controller';
 import { authenticateJwt, requireRole } from '../../middlewares/auth';
 
@@ -25,6 +26,7 @@ router.post('/test/trigger-cron', triggerCron);
 // Protected SME endpoints
 router.post('/', authenticateJwt, requireRole(['SME']), createProject);
 router.patch('/:id', authenticateJwt, requireRole(['SME']), updateProject);
+router.patch('/:id/cancel', authenticateJwt, requireRole(['SME']), cancelProject);
 router.patch('/:id/accept', authenticateJwt, requireRole(['SME', 'ADMIN']), acceptProject);
 router.patch('/:id/revision', authenticateJwt, requireRole(['SME', 'ADMIN']), requestProjectRevision);
 

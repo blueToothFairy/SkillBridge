@@ -246,7 +246,8 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
     if (milestones.length === 0) return 4;
     const deadlines = milestones.map((m) => new Date(m.deadline).getTime());
     const maxTime = Math.max(...deadlines);
-    const diffTime = maxTime - Date.now();
+    const minTime = Math.min(...deadlines);
+    const diffTime = maxTime - minTime;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(1, Math.ceil(diffDays / 7));
   })();
@@ -305,6 +306,13 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
       setErrorMsg('Vui lòng chọn hạn chót cột mốc');
       return;
     }
+    const msDeadline = new Date(newMDeadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+    if (msDeadline.getTime() < today.getTime()) {
+      setErrorMsg('Hạn chót cột mốc phải ở tương lai');
+      return;
+    }
     if (newMAmount <= 0) {
       setErrorMsg('Số tiền thanh toán phải lớn hơn 0');
       return;
@@ -352,6 +360,10 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
     setErrorMsg(null);
     if (milestones.length === 0) {
       setErrorMsg('Dự án phải có ít nhất 1 cột mốc thanh toán');
+      return;
+    }
+    if (calculatedDurationWeeks < 1 || calculatedDurationWeeks > 8) {
+      setErrorMsg(`Tổng thời gian thực hiện dự án (${calculatedDurationWeeks} tuần) phải từ 1 đến 8 tuần. Vui lòng điều chỉnh lại hạn chót các cột mốc.`);
       return;
     }
     setStep(3);
