@@ -57,7 +57,14 @@ export async function runAcceptanceRemindersJob(): Promise<SchedulerSummary> {
             logger.info(msg);
             summary.details.push(msg);
           } else if (r.reminderNumber === 3) {
-            // Day 28: Auto-Accept
+            // Day 28: Auto-Accept only while still waiting for SME acceptance
+            if (r.project.status !== ProjectStatus.PENDING_ACCEPTANCE) {
+              const skipMsg = `[Auto-Accept skipped] Project "${r.project.title}" is ${r.project.status}, not PENDING_ACCEPTANCE.`;
+              logger.info(skipMsg);
+              summary.details.push(skipMsg);
+              return;
+            }
+
             const msg = `[Auto-Accept] Project "${r.project.title}" is being auto-accepted after 28 days of inactivity.`;
             logger.info(msg);
             summary.details.push(msg);

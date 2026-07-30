@@ -33,19 +33,9 @@ export async function getEscrowStatus(projectId: string, requesterUserId: string
   }
 
   const totalBudget = Number(project.budget);
-  const releasedByMilestones = project.milestones
-    .filter((m) => m.status === MilestoneStatus.ACCEPTED)
-    .reduce((sum, m) => sum + Number(m.amountVnd), 0);
-
-  const heldAmount =
-    isPendingEscrow(project.escrowStatus)
-      ? 0
-      : project.escrowStatus === EscrowStatus.RELEASED
-        ? 0
-        : Math.max(totalBudget - releasedByMilestones, 0);
-
-  const releasedAmount =
-    project.escrowStatus === EscrowStatus.RELEASED ? totalBudget : releasedByMilestones;
+  // MVP escrow is lump-sum: funds stay fully held until project escrow is RELEASED.
+  const heldAmount = project.escrowStatus === EscrowStatus.HELD ? totalBudget : 0;
+  const releasedAmount = project.escrowStatus === EscrowStatus.RELEASED ? totalBudget : 0;
 
   const normalizedStatus =
     project.escrowStatus === EscrowStatus.NONE ? EscrowStatus.PENDING : project.escrowStatus;
@@ -63,7 +53,7 @@ export async function getEscrowStatus(projectId: string, requesterUserId: string
       title: m.title,
       amountVnd: Number(m.amountVnd),
       status: m.status,
-      isFundReleased: m.status === MilestoneStatus.ACCEPTED || project.escrowStatus === EscrowStatus.RELEASED,
+      isFundReleased: project.escrowStatus === EscrowStatus.RELEASED,
     })),
     canDeposit:
       isOwner &&

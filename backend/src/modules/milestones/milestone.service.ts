@@ -169,8 +169,8 @@ export async function cancelSubmission(milestoneId: string, studentUserId: strin
     throw new Error('Unauthorized: you are not matched to this project');
   }
 
-  if (milestone.status === MilestoneStatus.ACCEPTED) {
-    throw new Error('Cannot cancel submission for an already accepted milestone');
+  if (milestone.status !== MilestoneStatus.SUBMITTED) {
+    throw new Error('Only SUBMITTED milestones can have submission cancelled');
   }
 
   return await prisma.milestone.update({
@@ -228,12 +228,26 @@ export async function reviewMilestone(
       // 2. Fetch all milestones for project
       const allMilestones = await tx.milestone.findMany({
         where: { projectId: milestone.projectId },
+        orderBy: { orderIndex: 'asc' },
       });
 
       // Check if all are ACCEPTED (including the one we just updated)
       const allAccepted = allMilestones.every((m) =>
         m.id === milestoneId ? true : m.status === MilestoneStatus.ACCEPTED
       );
+
+      // Unlock next pending milestone so students see IN_PROGRESS correctly
+      if (!allAccepted) {
+        const nextMilestone = allMilestones.find(
+          (m) => m.orderIndex === milestone.orderIndex + 1 && m.status === MilestoneStatus.PENDING
+        );
+        if (nextMilestone) {
+          await tx.milestone.update({
+            where: { id: nextMilestone.id },
+            data: { status: MilestoneStatus.IN_PROGRESS },
+          });
+        }
+      }
 
       // 3. If all accepted, transition project status
       if (allAccepted) {

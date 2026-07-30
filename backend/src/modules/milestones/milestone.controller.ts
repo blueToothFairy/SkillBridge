@@ -83,6 +83,9 @@ export async function submitDeliverable(req: AuthenticatedRequest, res: Response
     const updatedMilestone = await milestoneService.submitDeliverable(id, studentUserId, deliverableUrl);
     return sendSuccess(res, updatedMilestone);
   } catch (error: any) {
+    if (error.message.includes('previous milestone')) {
+      return sendError(res, error.message, 400, 'VALIDATION_ERROR');
+    }
     if (error.message.includes('not found') || error.message.includes('not in progress')) {
       return sendError(res, error.message, 404, 'NOT_FOUND');
     }
