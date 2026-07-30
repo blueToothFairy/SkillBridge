@@ -19,6 +19,26 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       return sendError(res, 'Required fields: title, description, categoryTagId, budget, durationWeeks', 400, 'VALIDATION_ERROR');
     }
 
+    if (typeof title !== 'string' || title.trim().length < 5 || title.trim().length > 200) {
+      return sendError(res, 'Project title must be 5-200 characters', 400, 'VALIDATION_ERROR');
+    }
+
+    if (typeof description !== 'string' || description.trim().length < 20 || description.trim().length > 5000) {
+      return sendError(res, 'Project description must be 20-5000 characters', 400, 'VALIDATION_ERROR');
+    }
+
+    const skills = Array.isArray(requiredSkillTags)
+      ? requiredSkillTags.filter((s: unknown): s is string => typeof s === 'string' && s.trim().length > 0)
+      : [];
+    if (skills.length < 1 || skills.length > 10) {
+      return sendError(res, 'Project must have between 1 and 10 required skill tags', 400, 'VALIDATION_ERROR');
+    }
+
+    const budgetNumber = Number(budget);
+    if (isNaN(budgetNumber) || budgetNumber <= 0) {
+      return sendError(res, 'Budget must be greater than 0', 400, 'VALIDATION_ERROR');
+    }
+
     const duration = Number(durationWeeks);
     if (isNaN(duration) || duration < 1 || duration > 8) {
       return sendError(res, 'Thời gian thực hiện dự án phải từ 1 đến 8 tuần', 400, 'VALIDATION_ERROR');
@@ -31,8 +51,13 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       }
     }
 
+    // Compare by calendar day so date-only values (YYYY-MM-DD) are not rejected due to UTC midnight.
     const projectDeadline = deadline ? new Date(deadline) : new Date(Date.now() + duration * 7 * 24 * 60 * 60 * 1000);
-    if (projectDeadline.getTime() <= Date.now()) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadlineDay = new Date(projectDeadline);
+    deadlineDay.setHours(0, 0, 0, 0);
+    if (deadlineDay.getTime() < today.getTime()) {
       return sendError(res, 'Hạn chót dự án phải ở tương lai', 400, 'VALIDATION_ERROR');
     }
 
@@ -57,7 +82,9 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       }
 
       const msDeadline = new Date(m.deadline);
-      if (msDeadline.getTime() <= Date.now()) {
+      const msDay = new Date(msDeadline);
+      msDay.setHours(0, 0, 0, 0);
+      if (msDay.getTime() < today.getTime()) {
         return sendError(res, `Hạn chót của cột mốc "${m.title}" phải ở tương lai`, 400, 'VALIDATION_ERROR');
       }
 
@@ -72,16 +99,16 @@ export async function createProject(req: AuthenticatedRequest, res: Response) {
       milestoneBudgetSum += Number(m.amountVnd);
     }
 
-    if (milestoneBudgetSum !== Number(budget)) {
-      return sendError(res, `Sum of milestone budgets (${milestoneBudgetSum}) must equal total project budget (${budget})`, 400, 'VALIDATION_ERROR');
+    if (milestoneBudgetSum !== budgetNumber) {
+      return sendError(res, `Sum of milestone budgets (${milestoneBudgetSum}) must equal total project budget (${budgetNumber})`, 400, 'VALIDATION_ERROR');
     }
 
     const newProject = await projectService.createProject(userId, {
       title,
       description,
       categoryTagId,
-      requiredSkillTags: Array.isArray(requiredSkillTags) ? requiredSkillTags : [],
-      budget: Number(budget),
+      requiredSkillTags: skills,
+      budget: budgetNumber,
       durationWeeks: duration,
       maxApplicants: maxApplicants ? Number(maxApplicants) : undefined,
       deadline: projectDeadline,
@@ -99,6 +126,8 @@ export async function getProjects(req: AuthenticatedRequest, res: Response) {
     const { categoryTagId, query, status, page, limit, mine, smeId } = req.query;
 
     let smeUserId: string | undefined;
+    let statusFilter = status as ProjectStatus | undefined;
+
     if (mine === 'true') {
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith('Bearer ')) {
@@ -119,12 +148,19 @@ export async function getProjects(req: AuthenticatedRequest, res: Response) {
         return sendError(res, 'Only SME/Admin can list own projects', 403, 'FORBIDDEN');
       }
       smeUserId = req.user.role === 'SME' ? req.user.userId : undefined;
+    } else if (statusFilter && statusFilter !== ProjectStatus.OPEN) {
+      // Public browse may only list OPEN projects. Non-OPEN status requires SME mine/admin.
+      if (req.user?.role === 'ADMIN') {
+        // Admin may filter any status when authenticated via optional middleware
+      } else {
+        statusFilter = ProjectStatus.OPEN;
+      }
     }
 
     const result = await projectService.getProjects({
       categoryTagId: categoryTagId as string | undefined,
       query: query as string | undefined,
-      status: status as ProjectStatus | undefined,
+      status: statusFilter,
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 10,
       smeUserId,
@@ -166,7 +202,35 @@ export async function updateProject(req: AuthenticatedRequest, res: Response) {
     }
 
     const { id } = req.params;
-    const { durationWeeks, maxApplicants, deadline, milestones } = req.body;
+    const { title, description, requiredSkillTags, budget, durationWeeks, maxApplicants, deadline, milestones } = req.body;
+
+    if (title !== undefined) {
+      if (typeof title !== 'string' || title.trim().length < 5 || title.trim().length > 200) {
+        return sendError(res, 'Project title must be 5-200 characters', 400, 'VALIDATION_ERROR');
+      }
+    }
+
+    if (description !== undefined) {
+      if (typeof description !== 'string' || description.trim().length < 20 || description.trim().length > 5000) {
+        return sendError(res, 'Project description must be 20-5000 characters', 400, 'VALIDATION_ERROR');
+      }
+    }
+
+    if (requiredSkillTags !== undefined) {
+      const skills = Array.isArray(requiredSkillTags)
+        ? requiredSkillTags.filter((s: unknown): s is string => typeof s === 'string' && s.trim().length > 0)
+        : [];
+      if (skills.length < 1 || skills.length > 10) {
+        return sendError(res, 'Project must have between 1 and 10 required skill tags', 400, 'VALIDATION_ERROR');
+      }
+    }
+
+    if (budget !== undefined) {
+      const budgetNumber = Number(budget);
+      if (isNaN(budgetNumber) || budgetNumber <= 0) {
+        return sendError(res, 'Budget must be greater than 0', 400, 'VALIDATION_ERROR');
+      }
+    }
 
     if (durationWeeks !== undefined) {
       const duration = Number(durationWeeks);
@@ -182,14 +246,26 @@ export async function updateProject(req: AuthenticatedRequest, res: Response) {
       }
     }
 
-    if (deadline && new Date(deadline).getTime() <= Date.now()) {
-      return sendError(res, 'Hạn chót dự án phải ở tương lai', 400, 'VALIDATION_ERROR');
+    if (deadline) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const deadlineDay = new Date(deadline);
+      deadlineDay.setHours(0, 0, 0, 0);
+      if (deadlineDay.getTime() < today.getTime()) {
+        return sendError(res, 'Hạn chót dự án phải ở tương lai', 400, 'VALIDATION_ERROR');
+      }
     }
 
     if (milestones && Array.isArray(milestones)) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       for (const m of milestones) {
-        if (m.deadline && new Date(m.deadline).getTime() <= Date.now()) {
-          return sendError(res, `Hạn chót của cột mốc "${m.title}" phải ở tương lai`, 400, 'VALIDATION_ERROR');
+        if (m.deadline) {
+          const msDay = new Date(m.deadline);
+          msDay.setHours(0, 0, 0, 0);
+          if (msDay.getTime() < today.getTime()) {
+            return sendError(res, `Hạn chót của cột mốc "${m.title}" phải ở tương lai`, 400, 'VALIDATION_ERROR');
+          }
         }
       }
     }
@@ -226,6 +302,9 @@ export async function cancelProject(req: AuthenticatedRequest, res: Response) {
       return sendError(res, error.message, 403, 'FORBIDDEN');
     }
     if (error.message === 'Project can only be cancelled in OPEN status') {
+      return sendError(res, error.message, 400, 'BAD_REQUEST');
+    }
+    if (error.message.includes('accepted applicants')) {
       return sendError(res, error.message, 400, 'BAD_REQUEST');
     }
     return sendError(res, error.message || 'Failed to cancel project', 500, 'SERVER_ERROR');

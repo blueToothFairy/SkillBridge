@@ -125,7 +125,7 @@ model Project {
   requiredSkillTags Json
   budget            Decimal              @db.Decimal(12, 2)
   durationWeeks     Int
-  maxApplicants     Int                  @default(5)
+  maxApplicants     Int                  @default(4)
   deadline          DateTime
   status            ProjectStatus        @default(OPEN)
   escrowStatus      EscrowStatus         @default(PENDING)

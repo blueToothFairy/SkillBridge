@@ -121,12 +121,23 @@ export async function getProjects(params: {
           },
         },
         categoryTag: true,
+        _count: {
+          select: { applications: true },
+        },
       },
     }),
   ]);
 
+  const projectsWithCount = projects.map((project) => {
+    const { _count, ...rest } = project;
+    return {
+      ...rest,
+      applicantCount: _count.applications,
+    };
+  });
+
   return {
-    projects,
+    projects: projectsWithCount,
     meta: {
       total,
       page,
@@ -250,6 +261,17 @@ export async function cancelProject(id: string, userId: string) {
 
   if (project.status !== ProjectStatus.OPEN) {
     throw new Error('Project can only be cancelled in OPEN status');
+  }
+
+  const acceptedCount = await prisma.application.count({
+    where: {
+      projectId: id,
+      status: 'ACCEPTED',
+    },
+  });
+
+  if (acceptedCount > 0) {
+    throw new Error('Cannot cancel a project that already has accepted applicants');
   }
 
   return await prisma.project.update({

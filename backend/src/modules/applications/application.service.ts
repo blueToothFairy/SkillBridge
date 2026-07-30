@@ -5,7 +5,7 @@ import {
   ProjectStatus,
 } from '@prisma/client';
 import { prisma } from '../../config/prisma';
-import { computeSkillMatch } from '../../utils/skillMatch';
+import { computeSkillMatch, flattenStudentSkills } from '../../utils/skillMatch';
 
 function withMatchScore<T extends { project: { requiredSkillTags: unknown }; student: { skills: unknown } }>(
   application: T
@@ -28,6 +28,10 @@ export async function applyToProject(
   const student = await prisma.studentProfile.findUnique({ where: { userId } });
   if (!student) {
     throw new Error('Student profile not found');
+  }
+
+  if (flattenStudentSkills(student.skills).length < 1) {
+    throw new Error('Please add at least one skill to your profile before applying');
   }
 
   const project = await prisma.project.findUnique({
@@ -229,8 +233,8 @@ export async function confirmMatch(
     throw new Error('Unauthorized to confirm matching for this project');
   }
 
-  if (project.status !== ProjectStatus.OPEN && project.status !== ProjectStatus.MATCHED) {
-    throw new Error('Project is not open for matching');
+  if (project.status !== ProjectStatus.OPEN) {
+    throw new Error('Project matching can only be confirmed while status is OPEN');
   }
 
   if (studentProfileIds.length > project.maxApplicants) {
