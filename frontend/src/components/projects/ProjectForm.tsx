@@ -241,15 +241,14 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
   // Dynamic budget calculation (Sum of all milestones budget)
   const totalBudget = milestones.reduce((sum, m) => sum + Number(m.amountVnd), 0);
 
-  // Dynamic duration in weeks & maximum deadline calculation
+  // Dynamic duration in weeks from now until the latest milestone deadline
   const calculatedDurationWeeks = (() => {
     if (milestones.length === 0) return 4;
     const deadlines = milestones.map((m) => new Date(m.deadline).getTime());
     const maxTime = Math.max(...deadlines);
-    const minTime = Math.min(...deadlines);
-    const diffTime = maxTime - minTime;
+    const diffTime = Math.max(maxTime - Date.now(), 0);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(1, Math.ceil(diffDays / 7));
+    return Math.max(1, Math.min(8, Math.ceil(diffDays / 7) || 1));
   })();
 
   const calculatedDeadline = (() => {
@@ -381,34 +380,37 @@ export default function ProjectForm({ onSuccess, projectToEdit, onCancel }: Proj
 
     setSubmitting(true);
     try {
-      if (token) {
-        if (projectToEdit) {
-          await updateProjectApi(token, projectToEdit.id, {
-            title,
-            description,
-            categoryTagId,
-            requiredSkillTags: selectedSkillNames,
-            budget: totalBudget,
-            durationWeeks: calculatedDurationWeeks,
-            maxApplicants,
-            deadline: calculatedDeadline,
-            milestones,
-          });
-          setSuccessMsg('Cập nhật dự án thành công!');
-        } else {
-          await createProjectApi(token, {
-            title,
-            description,
-            categoryTagId,
-            requiredSkillTags: selectedSkillNames,
-            budget: totalBudget,
-            durationWeeks: calculatedDurationWeeks,
-            maxApplicants,
-            deadline: calculatedDeadline,
-            milestones,
-          });
-          setSuccessMsg('Đăng bài dự án thành công!');
-        }
+      if (!token) {
+        setErrorMsg('Bạn cần đăng nhập lại trước khi đăng dự án.');
+        return;
+      }
+
+      if (projectToEdit) {
+        await updateProjectApi(token, projectToEdit.id, {
+          title,
+          description,
+          categoryTagId,
+          requiredSkillTags: selectedSkillNames,
+          budget: totalBudget,
+          durationWeeks: calculatedDurationWeeks,
+          maxApplicants,
+          deadline: calculatedDeadline,
+          milestones,
+        });
+        setSuccessMsg('Cập nhật dự án thành công!');
+      } else {
+        await createProjectApi(token, {
+          title,
+          description,
+          categoryTagId,
+          requiredSkillTags: selectedSkillNames,
+          budget: totalBudget,
+          durationWeeks: calculatedDurationWeeks,
+          maxApplicants,
+          deadline: calculatedDeadline,
+          milestones,
+        });
+        setSuccessMsg('Đăng bài dự án thành công!');
       }
 
       if (onSuccess) {

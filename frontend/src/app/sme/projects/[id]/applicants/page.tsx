@@ -187,7 +187,7 @@ export default function SMEApplicantsPage() {
           <button
             type="button"
             onClick={handleConfirmMatch}
-            disabled={selectedStudentIds.length === 0 || submitting || project.status === 'IN_PROGRESS'}
+            disabled={selectedStudentIds.length === 0 || submitting || project.status !== 'OPEN'}
             className="btn-primary text-xs py-2.5 px-5 inline-flex items-center gap-2 font-bold disabled:opacity-40"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}

@@ -4,11 +4,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { fetchProjectByIdApi } from '@/lib/api/projects';
+import {
+  acceptProjectApi,
+  fetchProjectByIdApi,
+  requestProjectRevisionApi,
+} from '@/lib/api/projects';
 import {
   EscrowStatusResponse,
   fetchEscrowStatusApi,
-  releaseEscrowApi,
 } from '@/lib/api/escrow';
 import { ApiProject } from '@/types';
 import EscrowBadge from '@/components/escrow/EscrowBadge';
@@ -33,6 +36,9 @@ export default function ProjectEscrowPage() {
   const [error, setError] = useState<string | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
   const [releasing, setReleasing] = useState(false);
+  const [revising, setRevising] = useState(false);
+  const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [revisionFeedback, setRevisionFeedback] = useState('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -61,18 +67,40 @@ export default function ProjectEscrowPage() {
     if (token) load();
   }, [authLoading, isAuthenticated, token, load, router]);
 
-  const handleRelease = async () => {
+  const handleAcceptAndRelease = async () => {
     if (!token || !projectId) return;
     setReleasing(true);
     setError(null);
     try {
-      const status = await releaseEscrowApi(token, projectId);
-      setEscrow(status);
-      setSuccessMsg('Escrow released successfully (simulated).');
+      // Accept creates portfolio/certificate AND releases escrow in one path.
+      await acceptProjectApi(token, projectId);
+      await load();
+      setSuccessMsg('Project accepted. Escrow released and portfolio/certificate generated.');
     } catch (err: any) {
       setError(err.message);
     } finally {
       setReleasing(false);
+    }
+  };
+
+  const handleRequestRevision = async () => {
+    if (!token || !projectId) return;
+    if (revisionFeedback.trim().length < 10) {
+      setError('Feedback must be at least 10 characters.');
+      return;
+    }
+    setRevising(true);
+    setError(null);
+    try {
+      await requestProjectRevisionApi(token, projectId, revisionFeedback.trim());
+      setShowRevisionModal(false);
+      setRevisionFeedback('');
+      await load();
+      setSuccessMsg('Revision requested. Project returned to IN_PROGRESS.');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setRevising(false);
     }
   };
 
@@ -276,8 +304,8 @@ export default function ProjectEscrowPage() {
 
             <button
               type="button"
-              onClick={handleRelease}
-              disabled={!escrow.canRelease || releasing}
+              onClick={handleAcceptAndRelease}
+              disabled={!escrow.canRelease || releasing || isReleased}
               className="w-full btn-accent-green text-xs py-3 inline-flex items-center justify-center gap-2 disabled:opacity-40"
             >
               {releasing ? (
@@ -290,9 +318,17 @@ export default function ProjectEscrowPage() {
 
             <button
               type="button"
-              disabled
-              title="Thịnh Day 27 — API revise chưa wire"
-              className="w-full text-xs py-2.5 rounded-lg border border-amber-300 text-amber-700 font-semibold bg-white opacity-60 cursor-not-allowed inline-flex items-center justify-center gap-2"
+              onClick={() => setShowRevisionModal(true)}
+              disabled={
+                revising ||
+                isReleased ||
+                !(
+                  project.status === 'PENDING_ACCEPTANCE' ||
+                  (escrow.milestones.length > 0 &&
+                    escrow.milestones.every((m) => m.status === 'ACCEPTED'))
+                )
+              }
+              className="w-full text-xs py-2.5 rounded-lg border border-amber-300 text-amber-700 font-semibold bg-white hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
               <AlertTriangle className="w-4 h-4" /> Request Revision
             </button>
@@ -349,6 +385,45 @@ export default function ProjectEscrowPage() {
             load();
           }}
         />
+      )}
+
+      {showRevisionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="card-crisp w-full max-w-md bg-white p-5 space-y-4">
+            <h3 className="text-sm font-bold text-slate-900">Request Project Revision</h3>
+            <p className="text-xs text-slate-500">
+              Feedback sẽ gửi cho student và đưa project về trạng thái IN_PROGRESS.
+            </p>
+            <textarea
+              value={revisionFeedback}
+              onChange={(e) => setRevisionFeedback(e.target.value)}
+              rows={4}
+              className="w-full text-sm border border-slate-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Mô tả rõ phần cần chỉnh sửa (tối thiểu 10 ký tự)..."
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRevisionModal(false);
+                  setRevisionFeedback('');
+                }}
+                className="btn-secondary text-xs py-2 px-3"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestRevision}
+                disabled={revising}
+                className="btn-primary text-xs py-2 px-3 inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {revising ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Submit Revision Request
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
