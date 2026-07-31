@@ -1,5 +1,25 @@
 # AI Audit Log
 
+> **PA6 note:** File này là **phụ lục nhật ký** (prompt / output) các phiên dùng AI.  
+> Bản khai báo chính thức về thư viện, framework, API, template, references và phạm vi AI-generated nằm ở:  
+> **[`docs/Dependencies_And_AI_Disclosure.md`](./docs/Dependencies_And_AI_Disclosure.md)**  
+> README hướng dẫn cài đặt/chạy/sử dụng: **[`README.md`](./README.md)**
+
+## Mục đích
+
+Ghi nhận quá trình nhóm sử dụng AI (Cursor / Claude) khi xây dựng tài liệu kỹ thuật và hỗ trợ mã nguồn SkillBridge MVP, phục vụ minh bạch khi bảo vệ đồ án.
+
+## Tóm tắt nhanh
+
+| Mục | Nội dung |
+| :---- | :---- |
+| Công cụ | Cursor Agent/Chat, Claude (qua Cursor) |
+| Dùng cho | Docs kỹ thuật, scaffold/implement module, bugfix, README |
+| Không dùng cho | Payment thật, gọi LLM runtime trong app |
+| File disclosure chính | `docs/Dependencies_And_AI_Disclosure.md` |
+
+---
+
 ## Artifact 1: Tạo tài liệu kỹ thuật
 
 Đây là tài liệu ghi nhận toàn bộ quá trình trò chuyện, các yêu cầu (prompt) từ người dùng và phản hồi của mô hình AI cho dự án SkillBridge.

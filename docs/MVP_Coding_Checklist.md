@@ -2,7 +2,7 @@
 
 > Tài liệu theo dõi tiến độ code theo [MVP_Plan.md](../../doc/MVP_Plan.md).  
 > UI nguồn sự thật: [`Prototype_UI_Spec.md`](./Prototype_UI_Spec.md)  
-> Cập nhật lần cuối: **2026-07-30** (audit E2E Flow 1–4 + bugfix trên `main`).
+> Cập nhật lần cuối: **2026-08-01** (Prisma migration + README/PA6 disclosure docs).
 
 **Legend:** `[x]` hoàn thành đạt · `[~]` hoàn thành nhưng còn note · `[ ]` chưa làm
 
@@ -15,7 +15,7 @@
 - [x] Prisma schema đầy đủ 10 bảng CSDL
   - **Note:** Đã có `users`, `student_profiles`, `sme_profiles`, `tags`, `projects`, `milestones`, `applications`, `verified_portfolio_entries`, `certificates`, `acceptance_reminders`. Ba bảng cuối là stub schema cho Day 27–28.
 - [~] Chạy migration / sync DB
-  - **Note:** Dùng `npx prisma db push` (+ `prisma generate`). Nên tạo migration versioned trước demo cuối.
+  - **Note:** Đã có versioned migration `backend/prisma/migrations/20260730000000_init`. Clean install dùng `npm run prisma:migrate:deploy` (+ `db:seed`). DB cũ từ `db push` dùng `prisma migrate resolve --applied 20260730000000_init`.
 - [x] Backend Auth API: `POST /api/auth/register`, `POST /api/auth/login`
 - [x] JWT middleware + `GET /api/auth/me`, `PATCH /api/auth/profile`
 - [x] Frontend AuthContext + `/login`, `/register`
@@ -134,13 +134,16 @@
 ## 29–31/07/2026
 
 - [~] **29 Hà:** E2E Flow 1–2 (Auth → Post → Apply)
-  - **Note:** Audit + bugfix 30/7 đã harden Flow 1–2 (confirm-once, validations, cancel ACCEPTED guard, tags auth). Vẫn cần **test tay + ghi minh chứng** (screenshot/video).
+  - **Note:** Audit + bugfix 30/7 đã harden Flow 1–2. Minh chứng video/screenshot do thành viên khác chuẩn bị (`docs/prototype/` + video demo).
 - [~] **29 Thịnh:** E2E Flow 3–4 + README/screenshots
-  - **Note:** Bug T1–T5 đã FIXED; P0 escrow accept/revision đã FIXED. README còn mỏng; screenshots/video demo còn thiếu (screenshots từng bị xóa trong PR fix).
-- [ ] **30 Cả 2:** Feature freeze & dry-run demo
-- [ ] **31 Cả 2:** Đóng gói `04.zip` + verify clean install
+  - **Note:** Bug T1–T5 + P0 escrow đã FIXED. README PA6-ready + Dependencies/AI disclosure đã bổ sung (01/8).
+- [~] **30 Cả 2:** Feature freeze & dry-run demo
+  - **Note:** Feature freeze theo MVP; dry-run + video do nhóm hoàn tất ngoài PR docs này.
+- [~] **31 Cả 2:** Đóng gói `04.zip` + verify clean install
+  - **Note:** Còn bước nén zip theo mã nhóm + verify clean install trước nộp Moodle.
 
-Chi tiết bug: [`docs/bugs/report.md`](./bugs/report.md)
+Chi tiết bug: [`docs/bugs/report.md`](./bugs/report.md)  
+Disclosure PA6: [`docs/Dependencies_And_AI_Disclosure.md`](./Dependencies_And_AI_Disclosure.md)
 
 ---
 
