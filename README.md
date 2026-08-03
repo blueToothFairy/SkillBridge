@@ -85,18 +85,19 @@ cp .env.example .env
 Copy-Item .env.example .env
 ```
 
-Chỉnh `backend/.env`:
+Chỉnh `backend/.env` — dùng cấu hình demo Supabase của nhóm (PA6):
 
 ```env
 PORT=5000
 NODE_ENV=development
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
-JWT_SECRET="skillbridge-dev-secret-change-me"
+DATABASE_URL="postgresql://postgres.ordnktuxqhkknmboyccw:ticktackticktackticktatatoota@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+JWT_SECRET="skillbridge-super-secret-key-2026"
 CORS_ORIGIN="http://localhost:3000"
 ```
 
-> Cần PostgreSQL local hoặc connection string Supabase hợp lệ.  
-> Không commit file `.env` chứa secret thật.
+> Cấu hình trên dùng để giảng viên / thành viên chạy thử MVP nhanh (Supabase pooler).  
+> File `.env` vẫn **không** commit lên git; chỉ ghi trong README để đối chiếu khi setup.  
+> Sau buổi bảo vệ nên đổi password Supabase và `JWT_SECRET` nếu repo mang tính công khai.
 
 ---
 
