@@ -73,7 +73,16 @@ SkillBridge/
 ```bash
 cd backend
 npm install
+```
+
+Tạo file môi trường từ mẫu:
+
+```bash
+# macOS / Linux / Git Bash
 cp .env.example .env
+
+# Windows PowerShell
+Copy-Item .env.example .env
 ```
 
 Chỉnh `backend/.env`:
@@ -86,6 +95,7 @@ JWT_SECRET="skillbridge-dev-secret-change-me"
 CORS_ORIGIN="http://localhost:3000"
 ```
 
+> Cần PostgreSQL local hoặc connection string Supabase hợp lệ.  
 > Không commit file `.env` chứa secret thật.
 
 ---
@@ -95,10 +105,19 @@ CORS_ORIGIN="http://localhost:3000"
 ```bash
 cd frontend
 npm install
-cp .env.local.example .env.local
 ```
 
-Chỉnh `frontend/.env.local`:
+Tạo file môi trường từ mẫu:
+
+```bash
+# macOS / Linux / Git Bash
+cp .env.local.example .env.local
+
+# Windows PowerShell
+Copy-Item .env.local.example .env.local
+```
+
+Nội dung mặc định của `frontend/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
