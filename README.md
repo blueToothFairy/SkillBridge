@@ -95,9 +95,9 @@ JWT_SECRET="skillbridge-super-secret-key-2026"
 CORS_ORIGIN="http://localhost:3000"
 ```
 
-> Cấu hình trên dùng để giảng viên / thành viên chạy thử MVP nhanh (Supabase pooler).  
-> File `.env` vẫn **không** commit lên git; chỉ ghi trong README để đối chiếu khi setup.  
-> Sau buổi bảo vệ nên đổi password Supabase và `JWT_SECRET` nếu repo mang tính công khai.
+> Nhóm **cố ý** để sẵn connection string Supabase và `JWT_SECRET` demo trong README để người chấm / thành viên clone về là chạy thử được ngay, không mất thời gian cấu hình DB.  
+> Đây **chỉ phục vụ test / demo / bảo vệ đồ án**. Môi trường production sẽ dùng secret riêng, không tái sử dụng cấu hình này.  
+> File `.env` vẫn không commit lên git; người chạy tự copy giá trị trên vào `.env` local theo hướng dẫn.
 
 ---
 
